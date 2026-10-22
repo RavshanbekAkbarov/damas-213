@@ -3,14 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Damas Yoʻli</title>
+<title>213 Damas</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f7a4d">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-  <h1>🚐 Damas Yoʻli</h1>
+  <h1>🚐 213 Damas</h1>
   <button id="btnGo" class="main">🙋 Men ketaman</button>
   <div class="stats">
     <span>Kutmoqda: <b id="sWait">0</b></span>
@@ -22,6 +25,23 @@
 <div id="map" style="flex:1"></div>
 <div id="hint" hidden>Turgan joyingizni xaritada bosing</div>
 <div id="ad"><small>Reklama</small><span id="adText"></span></div>
+
+<!-- Birinchi kirganda: ilova sifatida o'rnatish -->
+<div id="install" class="install" hidden>
+  <div class="install-box">
+    <b style="font-size:18px">📲 213 Damasni telefoningizga oʻrnating</b>
+    <span>Keyin har safar bosh ekrandan ilova kabi ochasiz.</span>
+    <button id="installBtn" class="main" hidden>📲 Oʻrnatish</button>
+    <ol id="iosSteps" hidden>
+      <li>Pastdagi <b>⬆️ Ulashish</b> tugmasini bosing</li>
+      <li><b>«Bosh ekranga»</b> (Add to Home Screen) ni tanlang</li>
+    </ol>
+    <span id="otherSteps" hidden>Chrome menyusi <b>⋮</b> → <b>«Bosh ekranga qoʻshish»</b></span>
+    <button id="videoBtn" hidden>▶️ Videoda koʻrish</button>
+    <div id="video"></div>
+    <button id="laterBtn">Keyinroq</button>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
@@ -37,6 +57,8 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 const icon = html => L.divIcon({ className: "", html, iconAnchor: [20, 12] });
+// Damas belgisi: xaritadagi kichik rasm
+const VAN = `<img src="damas-marker.png" width="52" alt="Damas">`;
 
 // Pitak belgilari (doimiy)
 const pitakMarkers = {};
@@ -67,7 +89,7 @@ function render() {
   // 2) Yo'ldagi Damaslar (GPS 3-bosqichda qo'shiladi)
   const road = Object.entries(drivers).filter(([, d]) => d.status === "road" && d.lat);
   sync(roadMarkers, road, (id, d) => {
-    const html = `<div class="damas ${d.people >= CAP ? "full" : ""}">🚐 ${d.people}/${CAP}</div>`;
+    const html = `<div class="van">${VAN}<span class="damas ${d.people >= CAP ? "full" : ""}">${d.people}/${CAP}</span></div>`;
     const popup = `<b>${d.name}</b><br>📞 <span style="user-select:all">${d.phone}</span><br>Boʻsh joy: ${CAP - d.people}`;
     if (!roadMarkers[id]) roadMarkers[id] = L.marker([d.lat, d.lng]).addTo(map).bindPopup("");
     roadMarkers[id].setLatLng([d.lat, d.lng]).setIcon(icon(html)).setPopupContent(popup);
@@ -121,15 +143,68 @@ btn.onclick = () => {
   if (myId() && passengers[myId()]) {         // bekor qilish
     remove(ref(db, "passengers/" + myId())); setMyId(null); return;
   }
-  picking = !picking; hint.hidden = !picking;
+  // Avval GPS bilan joyni o'zi aniqlaymiz
+  btn.textContent = "📍 Joy aniqlanmoqda…";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      addMe(pos.coords.latitude, pos.coords.longitude);
+      map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+    },
+    () => {                                      // ruxsat berilmasa: xaritada bosish
+      picking = true; hint.hidden = false; updateButton();
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
 };
 
-map.on("click", e => {
-  if (!picking) return;
-  const newRef = push(ref(db, "passengers"), { lat: e.latlng.lat, lng: e.latlng.lng, since: Date.now() });
+function addMe(lat, lng) {
+  const newRef = push(ref(db, "passengers"), { lat, lng, since: Date.now() });
   setMyId(newRef.key);
   picking = false; hint.hidden = true;
+}
+
+map.on("click", e => { if (picking) addMe(e.latlng.lat, e.latlng.lng); });
+
+// ===== Ilova sifatida o'rnatish =====
+const VIDEO_ID = ""; // YouTube video ID sini shu yerga yozing (masalan "dQw4w9WgXcQ")
+const $ = id => document.getElementById(id);
+const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+let seen = false;
+try { seen = localStorage.getItem("installSeen") === "1"; } catch (e) {}
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+
+if (!installed && !seen) {
+  $("install").hidden = false;
+  if (/iphone|ipad/i.test(navigator.userAgent)) $("iosSteps").hidden = false;
+  else $("otherSteps").hidden = false;
+  if (VIDEO_ID) $("videoBtn").hidden = false;
+}
+
+// Android Chrome: bitta tugma bilan o'rnatish
+let installEvent = null;
+addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); installEvent = e;
+  $("installBtn").hidden = false; $("otherSteps").hidden = true;
 });
+$("installBtn").onclick = async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  await installEvent.userChoice;
+  closeInstall();
+};
+
+$("videoBtn").onclick = () => {
+  $("video").innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${VIDEO_ID}?autoplay=1"
+    allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+  $("videoBtn").hidden = true;
+};
+
+$("laterBtn").onclick = closeInstall;
+function closeInstall() {
+  $("install").hidden = true; $("video").innerHTML = "";
+  try { localStorage.setItem("installSeen", "1"); } catch (e) {}
+}
 
 // ===== Reklama =====
 let adIndex = 0;

@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 :root {
   --bg: #f3f5f2; --panel: #ffffff; --fg: #1d2420; --muted: #66706a;
   --accent: #1f7a4d; --late: #d93a2b; --ad: #fff6dc;
@@ -29,6 +30,8 @@ button.danger { background: var(--late); color: #fff; }
 #ad small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
 
 /* Xarita belgilari */
+.van { position: relative; width: 52px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.van .damas { position: absolute; top: -10px; right: -12px; font-size: 12px; padding: 1px 5px; }
 .damas { background: var(--accent); color: #fff; border-radius: 14px; padding: 2px 7px;
          font-weight: 700; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .damas.full { background: var(--late); }
@@ -36,3 +39,12 @@ button.danger { background: var(--late); color: #fff; }
          white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .pax { font-size: 22px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
 .pax.late { background: var(--late); border-radius: 50%; padding: 2px; }
+
+/* O'rnatish oynasi */
+.install { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,.55);
+           display: flex; align-items: flex-end; justify-content: center; }
+.install-box { background: var(--panel); width: 100%; max-width: 480px; border-radius: 18px 18px 0 0;
+               padding: 20px 16px; padding-bottom: max(20px, env(safe-area-inset-bottom));
+               display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
+.install-box ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+#video iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px; }
