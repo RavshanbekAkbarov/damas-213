@@ -4,9 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>213 Damas: Haydovchi</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="manifest" href="manifest-haydovchi.json">
+<meta name="theme-color" content="#1f7a4d">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
 <style>
-  main { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 480px;
+  #map { height: 42vh; flex: none; }
+  main { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 480px;
          width: 100%; margin: 0 auto; box-sizing: border-box; }
   .card { background: var(--panel); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .counter { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -20,6 +25,7 @@
 <body>
 
 <header><h1>🚐 213 Damas: Haydovchi</h1></header>
+<div id="map"></div>
 
 <main>
   <!-- Birinchi marta: ro'yxatdan o'tish -->
@@ -52,14 +58,21 @@
   </section>
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
 import { ref, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { db, CAP, PITAKS, queueAt } from "./config.js";
+import { liveMap } from "./map.js";
+import { setupInstall } from "./install.js";
 
 const $ = id => document.getElementById(id);
 let myId = null;
 try { myId = localStorage.getItem("myDriver"); } catch (e) {}
 let me = null, drivers = {};
+
+// Xarita: haydovchi ham kutayotgan yo'lovchilarni ko'radi
+const map = liveMap("map", { myDriverId: myId });
+setupInstall({ title: "Haydovchi ilovasini oʻrnating", storageKey: "installSeenDriver" });
 
 // ===== Ro'yxatdan o'tish =====
 if (!myId) $("regForm").hidden = false; else start();
@@ -141,6 +154,7 @@ function onPosition(pos) {
 
   // Har 10 soniyada bir marta yuboramiz (internet va Firebase'ni tejash uchun)
   if (Date.now() - lastSent < 10000) return;
+  if (!lastSent) map.setView(here, 14);          // birinchi marta o'zimizga yaqinlashamiz
   lastSent = Date.now();
   save({ lat: here[0], lng: here[1], updatedAt: Date.now() });
   $("gps").textContent = "📡 GPS yoqiq · joylashuv yuborildi " + new Date().toLocaleTimeString("uz");

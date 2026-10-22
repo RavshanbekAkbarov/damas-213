@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>213 Damas</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f7a4d">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>🚐 213 Damas</h1>
+  <button id="btnGo" class="main">🙋 Men ketaman</button>
+  <div class="stats">
+    <span>Kutmoqda: <b id="sWait">0</b></span>
+    <span>Yoʻlda: <b id="sRoad">0</b></span>
+    <span>Pitakda: <b id="sPitak">0</b></span>
+  </div>
+</header>
+
+<div id="map" style="flex:1"></div>
+<div id="hint" hidden>Turgan joyingizni xaritada bosing</div>
+<div id="ad"><small>Reklama</small><span id="adText"></span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+import { ref, push, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { db } from "./config.js";
+import { liveMap } from "./map.js";
+import { setupInstall } from "./install.js";
+
+const ADS = ["🛒 Oqboʻyra doʻkoni: yangi mahsulotlar", "🔧 Avto usta: tez va arzon", "🎉 Toʻyxona band qilish"];
+const $ = id => document.getElementById(id);
+
+// ===== Xarita =====
+let passengers = {};
+const map = liveMap("map", {
+  myPaxId,
+  onUpdate: (d, p, stats) => {
+    passengers = p;
+    $("sWait").textContent = stats.waiting;
+    $("sRoad").textContent = stats.road;
+    $("sPitak").textContent = stats.pitak;
+    updateButton();
+  }
+});
+
+// ===== "Men ketaman" tugmasi =====
+const btn = $("btnGo"), hint = $("hint");
+let picking = false;
+
+function myPaxId() { try { return localStorage.getItem("myPax"); } catch (e) { return null; } }
+function setMyId(id) { try { id ? localStorage.setItem("myPax", id) : localStorage.removeItem("myPax"); } catch (e) {} }
+
+function updateButton() {
+  const waiting = myPaxId() && passengers[myPaxId()];
+  btn.textContent = waiting ? "❌ Bekor qilish" : "🙋 Men ketaman";
+  btn.className = waiting ? "danger" : "main";
+}
+
+btn.onclick = () => {
+  if (myPaxId() && passengers[myPaxId()]) {        // bekor qilish
+    remove(ref(db, "passengers/" + myPaxId())); setMyId(null); return;
+  }
+  // Avval GPS bilan joyni o'zi aniqlaymiz
+  btn.textContent = "📍 Joy aniqlanmoqda…";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      addMe(pos.coords.latitude, pos.coords.longitude);
+      map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+    },
+    () => { picking = true; hint.hidden = false; updateButton(); }, // ruxsat bo'lmasa: xaritada bosish
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+};
+
+function addMe(lat, lng) {
+  const newRef = push(ref(db, "passengers"), { lat, lng, since: Date.now() });
+  setMyId(newRef.key);
+  picking = false; hint.hidden = true;
+}
+
+map.on("click", e => { if (picking) addMe(e.latlng.lat, e.latlng.lng); });
+
+// ===== O'rnatish oynasi =====
+setupInstall({ title: "213 Damasni telefoningizga oʻrnating", videoId: "" }); // videoId: YouTube havolasidagi v= dan keyingi qism
+
+// ===== Reklama =====
+let adIndex = 0;
+const nextAd = () => $("adText").textContent = ADS[adIndex++ % ADS.length];
+nextAd(); setInterval(nextAd, 6000);
+</script>
+</body>
+</html>
