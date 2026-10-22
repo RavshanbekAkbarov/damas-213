@@ -89,8 +89,12 @@ function render() {
   // 2) Yo'ldagi Damaslar (GPS 3-bosqichda qo'shiladi)
   const road = Object.entries(drivers).filter(([, d]) => d.status === "road" && d.lat);
   sync(roadMarkers, road, (id, d) => {
-    const html = `<div class="van">${VAN}<span class="damas ${d.people >= CAP ? "full" : ""}">${d.people}/${CAP}</span></div>`;
-    const popup = `<b>${d.name}</b><br>📞 <span style="user-select:all">${d.phone}</span><br>Boʻsh joy: ${CAP - d.people}`;
+    const stale = Date.now() - (d.updatedAt || 0) > 5 * 60000;   // 5 daqiqadan eski joylashuv
+    const cls = stale ? "stale" : d.people >= CAP ? "full" : "";
+    const html = `<div class="van ${stale ? "old" : ""}">${VAN}<span class="damas ${cls}">${d.people}/${CAP}</span></div>`;
+    const ago = Math.round((Date.now() - (d.updatedAt || 0)) / 60000);
+    const popup = `<b>${d.name}</b><br>📞 <span style="user-select:all">${d.phone}</span><br>Boʻsh joy: ${CAP - d.people}` +
+                  `<br><small>${ago < 1 ? "hozir yangilandi" : ago + " daq oldin"}</small>`;
     if (!roadMarkers[id]) roadMarkers[id] = L.marker([d.lat, d.lng]).addTo(map).bindPopup("");
     roadMarkers[id].setLatLng([d.lat, d.lng]).setIcon(icon(html)).setPopupContent(popup);
   });

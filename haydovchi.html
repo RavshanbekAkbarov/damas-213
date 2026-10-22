@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Damas Haydovchi</title>
+<title>213 Damas: Haydovchi</title>
 <link rel="stylesheet" href="style.css">
 <style>
   main { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 480px;
@@ -19,7 +19,7 @@
 </head>
 <body>
 
-<header><h1>🚐 Haydovchi</h1></header>
+<header><h1>🚐 213 Damas: Haydovchi</h1></header>
 
 <main>
   <!-- Birinchi marta: ro'yxatdan o'tish -->
@@ -34,6 +34,7 @@
   <section id="panel" hidden>
     <div class="card">
       <div class="status" id="status">…</div>
+      <small id="gps" style="color:var(--muted)"></small>
     </div>
     <div class="card">
       <span>Damasdagi odamlar</span>
@@ -89,7 +90,9 @@ function render() {
   $("count").textContent = `${me.people}/${CAP}`;
   if (me.status === "road") {
     $("status").textContent = "🚦 Siz yoʻldasiz";
+    startGps();                       // sahifa qayta ochilsa ham GPS davom etadi
   } else {
+    stopGps();
     const place = queueAt(drivers, me.pitak).findIndex(([id]) => id === myId) + 1;
     $("status").textContent = place === 1
       ? `✅ Navbatingiz keldi! (${PITAKS[me.pitak].name})`
@@ -102,12 +105,62 @@ const save = data => update(ref(db, "drivers/" + myId), data);
 
 $("plus").onclick  = () => me && me.people < CAP && save({ people: me.people + 1 });
 $("minus").onclick = () => me && me.people > 0   && save({ people: me.people - 1 });
-$("goRoad").onclick = () => save({ status: "road" });
+$("goRoad").onclick = () => { if (me.status !== "road") save({ status: "road", from: me.pitak }); };
 
 // Pitakka kelganda: hamma tushadi, navbat oxiriga turadi
 const arrive = key => save({ status: "pitak", pitak: key, queuedAt: Date.now(), people: 0 });
 $("atQishloq").onclick = () => arrive("qishloq");
 $("atFargona").onclick = () => arrive("fargona");
+
+// ===== GPS (faqat yo'lda) =====
+let watchId = null, lastSent = 0, wakeLock = null;
+
+function startGps() {
+  if (watchId !== null) return;
+  if (!navigator.geolocation) { $("gps").textContent = "❌ Bu telefonda GPS yoʻq"; return; }
+  keepScreenOn();
+  watchId = navigator.geolocation.watchPosition(onPosition,
+    err => $("gps").textContent = "❌ GPS ishlamayapti: joylashuvga ruxsat bering",
+    { enableHighAccuracy: true, maximumAge: 5000 });
+}
+
+function stopGps() {
+  if (watchId === null) return;
+  navigator.geolocation.clearWatch(watchId); watchId = null;
+  if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  $("gps").textContent = "📴 GPS oʻchiq (pitakdasiz)";
+}
+
+function onPosition(pos) {
+  const here = [pos.coords.latitude, pos.coords.longitude];
+
+  // Boshqa pitakka 150 m yaqinlashsa: avtomatik navbatga turadi
+  for (const key in PITAKS) {
+    if (key !== me.from && distance(here, PITAKS[key].at) < 150) return arrive(key);
+  }
+
+  // Har 10 soniyada bir marta yuboramiz (internet va Firebase'ni tejash uchun)
+  if (Date.now() - lastSent < 10000) return;
+  lastSent = Date.now();
+  save({ lat: here[0], lng: here[1], updatedAt: Date.now() });
+  $("gps").textContent = "📡 GPS yoqiq · joylashuv yuborildi " + new Date().toLocaleTimeString("uz");
+}
+
+// Ekran o'chmasligi uchun (o'chsa brauzer GPS'ni to'xtatadi)
+async function keepScreenOn() {
+  try { wakeLock = await navigator.wakeLock.request("screen"); } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && watchId !== null) keepScreenOn();
+});
+
+// Ikki nuqta orasidagi masofa (metr), Haversine formulasi
+function distance([lat1, lng1], [lat2, lng2]) {
+  const r = Math.PI / 180, R = 6371000;
+  const a = Math.sin((lat2 - lat1) * r / 2) ** 2 +
+            Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lng2 - lng1) * r / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
 </script>
 </body>
 </html>
