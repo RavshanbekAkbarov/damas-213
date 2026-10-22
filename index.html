@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Damas Yoʻli</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>🚐 Damas Yoʻli</h1>
+  <button id="btnGo" class="main">🙋 Men ketaman</button>
+  <div class="stats">
+    <span>Kutmoqda: <b id="sWait">0</b></span>
+    <span>Yoʻlda: <b id="sRoad">0</b></span>
+    <span>Pitakda: <b id="sPitak">0</b></span>
+  </div>
+</header>
+
+<div id="map" style="flex:1"></div>
+<div id="hint" hidden>Turgan joyingizni xaritada bosing</div>
+<div id="ad"><small>Reklama</small><span id="adText"></span></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module">
+import { ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { db, CAP, PITAKS, queueAt } from "./config.js";
+
+const ADS = ["🛒 Oqboʻyra doʻkoni: yangi mahsulotlar", "🔧 Avto usta: tez va arzon", "🎉 Toʻyxona band qilish"];
+
+// ===== Xarita =====
+const map = L.map("map").fitBounds([PITAKS.qishloq.at, PITAKS.fargona.at], { padding: [40, 40] });
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19, attribution: "© OpenStreetMap"
+}).addTo(map);
+
+const icon = html => L.divIcon({ className: "", html, iconAnchor: [20, 12] });
+
+// Pitak belgilari (doimiy)
+const pitakMarkers = {};
+for (const key in PITAKS) {
+  pitakMarkers[key] = L.marker(PITAKS[key].at, { zIndexOffset: 1000 }).addTo(map).bindPopup("");
+}
+
+// ===== Firebase'dan jonli ma'lumot =====
+let drivers = {}, passengers = {};
+onValue(ref(db, "drivers"), snap => { drivers = snap.val() || {}; render(); });
+onValue(ref(db, "passengers"), snap => { passengers = snap.val() || {}; render(); });
+setInterval(render, 30000); // stikerlar vaqt o'tishi bilan o'zgarishi uchun
+
+const roadMarkers = {}, paxMarkers = {};
+
+function render() {
+  // 1) Pitaklar: navbat ro'yxati
+  let pitakCount = 0;
+  for (const key in PITAKS) {
+    const q = queueAt(drivers, key);
+    pitakCount += q.length;
+    pitakMarkers[key].setIcon(icon(`<div class="pitak">🅿️ ${q.length}</div>`));
+    const list = q.map(([, d], i) =>
+      `${i + 1}. <b>${d.name}</b> ${d.people}/${CAP} · <span style="user-select:all">${d.phone}</span>`).join("<br>");
+    pitakMarkers[key].setPopupContent(`<b>${PITAKS[key].name}</b><br>${list || "Hozir Damas yoʻq"}`);
+  }
+
+  // 2) Yo'ldagi Damaslar (GPS 3-bosqichda qo'shiladi)
+  const road = Object.entries(drivers).filter(([, d]) => d.status === "road" && d.lat);
+  sync(roadMarkers, road, (id, d) => {
+    const html = `<div class="damas ${d.people >= CAP ? "full" : ""}">🚐 ${d.people}/${CAP}</div>`;
+    const popup = `<b>${d.name}</b><br>📞 <span style="user-select:all">${d.phone}</span><br>Boʻsh joy: ${CAP - d.people}`;
+    if (!roadMarkers[id]) roadMarkers[id] = L.marker([d.lat, d.lng]).addTo(map).bindPopup("");
+    roadMarkers[id].setLatLng([d.lat, d.lng]).setIcon(icon(html)).setPopupContent(popup);
+  });
+
+  // 3) Kutayotgan yo'lovchilar
+  const now = Date.now();
+  const waiting = Object.entries(passengers).filter(([id, p]) => {
+    const old = now - p.since > 40 * 60000;
+    if (old) remove(ref(db, "passengers/" + id)); // 40 daqiqadan eski: o'chiramiz
+    return !old;
+  });
+  sync(paxMarkers, waiting, (id, p) => {
+    const min = Math.floor((now - p.since) / 60000);
+    const mood = min < 5 ? "ok" : min < 15 ? "mid" : "late";
+    const emoji = { ok: "🙂", mid: "😐", late: "😡" }[mood];
+    const mine = id === myId() ? "<b>Siz</b><br>" : "";
+    if (!paxMarkers[id]) paxMarkers[id] = L.marker([p.lat, p.lng]).addTo(map).bindPopup("");
+    paxMarkers[id].setIcon(L.divIcon({ className: "", html: `<div class="pax ${mood}">${emoji}</div>`, iconAnchor: [12, 12] }))
+      .setPopupContent(`${mine}Kutyapti: ${min} daqiqa`);
+  });
+
+  document.getElementById("sWait").textContent = waiting.length;
+  document.getElementById("sRoad").textContent = road.length;
+  document.getElementById("sPitak").textContent = pitakCount;
+  updateButton();
+}
+
+// Belgilarni yangilaydi: yangilarini qo'shadi, yo'qolganlarini o'chiradi
+function sync(markers, items, draw) {
+  const ids = new Set(items.map(([id]) => id));
+  for (const id in markers) if (!ids.has(id)) { map.removeLayer(markers[id]); delete markers[id]; }
+  items.forEach(([id, item]) => draw(id, item));
+}
+
+// ===== "Men ketaman" tugmasi =====
+const btn = document.getElementById("btnGo");
+const hint = document.getElementById("hint");
+let picking = false;
+
+function myId() { try { return localStorage.getItem("myPax"); } catch (e) { return null; } }
+function setMyId(id) { try { id ? localStorage.setItem("myPax", id) : localStorage.removeItem("myPax"); } catch (e) {} }
+
+function updateButton() {
+  const waiting = myId() && passengers[myId()];
+  btn.textContent = waiting ? "❌ Bekor qilish" : "🙋 Men ketaman";
+  btn.className = waiting ? "danger" : "main";
+}
+
+btn.onclick = () => {
+  if (myId() && passengers[myId()]) {         // bekor qilish
+    remove(ref(db, "passengers/" + myId())); setMyId(null); return;
+  }
+  picking = !picking; hint.hidden = !picking;
+};
+
+map.on("click", e => {
+  if (!picking) return;
+  const newRef = push(ref(db, "passengers"), { lat: e.latlng.lat, lng: e.latlng.lng, since: Date.now() });
+  setMyId(newRef.key);
+  picking = false; hint.hidden = true;
+});
+
+// ===== Reklama =====
+let adIndex = 0;
+const nextAd = () => document.getElementById("adText").textContent = ADS[adIndex++ % ADS.length];
+nextAd(); setInterval(nextAd, 6000);
+</script>
+</body>
+</html>

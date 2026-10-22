@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Damas Haydovchi</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  main { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 480px;
+         width: 100%; margin: 0 auto; box-sizing: border-box; }
+  .card { background: var(--panel); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .counter { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .counter button { font-size: 40px; width: 90px; height: 90px; border-radius: 20px; }
+  .count { font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .status { font-size: 18px; font-weight: 600; }
+  input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--muted);
+          background: var(--bg); color: var(--fg); }
+</style>
+</head>
+<body>
+
+<header><h1>🚐 Haydovchi</h1></header>
+
+<main>
+  <!-- Birinchi marta: ro'yxatdan o'tish -->
+  <form id="regForm" class="card" hidden>
+    <b>Roʻyxatdan oʻtish</b>
+    <input id="name" placeholder="Ismingiz" required>
+    <input id="phone" placeholder="+998 90 123 45 67" required>
+    <button class="main">Saqlash</button>
+  </form>
+
+  <!-- Asosiy panel -->
+  <section id="panel" hidden>
+    <div class="card">
+      <div class="status" id="status">…</div>
+    </div>
+    <div class="card">
+      <span>Damasdagi odamlar</span>
+      <div class="counter">
+        <button id="minus">➖</button>
+        <span class="count" id="count">0/7</span>
+        <button id="plus" class="main">➕</button>
+      </div>
+    </div>
+    <div class="card">
+      <button id="goRoad" class="main">🚦 Yoʻlga chiqdim</button>
+      <button id="atQishloq">🅿️ Qishloq pitakka keldim</button>
+      <button id="atFargona">🅿️ Fargʻona pitakka keldim</button>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import { ref, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { db, CAP, PITAKS, queueAt } from "./config.js";
+
+const $ = id => document.getElementById(id);
+let myId = null;
+try { myId = localStorage.getItem("myDriver"); } catch (e) {}
+let me = null, drivers = {};
+
+// ===== Ro'yxatdan o'tish =====
+if (!myId) $("regForm").hidden = false; else start();
+
+$("regForm").onsubmit = e => {
+  e.preventDefault();
+  const newRef = push(ref(db, "drivers"), {
+    name: $("name").value.trim(), phone: $("phone").value.trim(),
+    people: 0, status: "pitak", pitak: "qishloq", queuedAt: Date.now()
+  });
+  myId = newRef.key;
+  try { localStorage.setItem("myDriver", myId); } catch (e) {}
+  $("regForm").hidden = true;
+  start();
+};
+
+// ===== Jonli holat =====
+function start() {
+  $("panel").hidden = false;
+  onValue(ref(db, "drivers"), snap => {
+    drivers = snap.val() || {};
+    me = drivers[myId];
+    if (me) render();
+  });
+}
+
+function render() {
+  $("count").textContent = `${me.people}/${CAP}`;
+  if (me.status === "road") {
+    $("status").textContent = "🚦 Siz yoʻldasiz";
+  } else {
+    const place = queueAt(drivers, me.pitak).findIndex(([id]) => id === myId) + 1;
+    $("status").textContent = place === 1
+      ? `✅ Navbatingiz keldi! (${PITAKS[me.pitak].name})`
+      : `🅿️ ${PITAKS[me.pitak].name}: navbatda ${place}-oʻrindasiz`;
+  }
+}
+
+// ===== Tugmalar =====
+const save = data => update(ref(db, "drivers/" + myId), data);
+
+$("plus").onclick  = () => me && me.people < CAP && save({ people: me.people + 1 });
+$("minus").onclick = () => me && me.people > 0   && save({ people: me.people - 1 });
+$("goRoad").onclick = () => save({ status: "road" });
+
+// Pitakka kelganda: hamma tushadi, navbat oxiriga turadi
+const arrive = key => save({ status: "pitak", pitak: key, queuedAt: Date.now(), people: 0 });
+$("atQishloq").onclick = () => arrive("qishloq");
+$("atFargona").onclick = () => arrive("fargona");
+</script>
+</body>
+</html>

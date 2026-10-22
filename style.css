@@ -1,0 +1,38 @@
+:root {
+  --bg: #f3f5f2; --panel: #ffffff; --fg: #1d2420; --muted: #66706a;
+  --accent: #1f7a4d; --late: #d93a2b; --ad: #fff6dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111613; --panel: #1b221e; --fg: #e7ece9; --muted: #95a19a;
+          --accent: #3fb07a; --ad: #2a2618; color-scheme: dark; }
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); display: flex; flex-direction: column;
+       font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+header { background: var(--panel); padding: 10px 14px; padding-top: max(10px, env(safe-area-inset-top));
+         display: flex; flex-wrap: wrap; gap: 8px; align-items: center; z-index: 1000; }
+header h1 { font-size: 17px; margin: 0; flex: 1 1 auto; }
+.stats { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); width: 100%; font-variant-numeric: tabular-nums; }
+.stats b { color: var(--fg); }
+
+button { font: inherit; border: 0; border-radius: 10px; padding: 9px 12px; cursor: pointer;
+         background: var(--bg); color: var(--fg); }
+button.main { background: var(--accent); color: #fff; font-weight: 600; }
+button.danger { background: var(--late); color: #fff; }
+
+#hint { position: fixed; top: 120px; left: 50%; transform: translateX(-50%); z-index: 1000;
+        background: var(--fg); color: var(--bg); padding: 8px 12px; border-radius: 8px; }
+
+#ad { background: var(--ad); padding: 10px 14px; padding-bottom: max(10px, env(safe-area-inset-bottom));
+      display: flex; gap: 10px; align-items: center; }
+#ad small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+
+/* Xarita belgilari */
+.damas { background: var(--accent); color: #fff; border-radius: 14px; padding: 2px 7px;
+         font-weight: 700; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.damas.full { background: var(--late); }
+.pitak { background: #1a4fd6; color: #fff; border-radius: 8px; padding: 3px 7px; font-weight: 700;
+         white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.pax { font-size: 22px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+.pax.late { background: var(--late); border-radius: 50%; padding: 2px; }
