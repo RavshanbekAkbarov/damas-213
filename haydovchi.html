@@ -212,17 +212,27 @@ function alertDriver(p, far) {
   navigator.vibrate?.([400, 200, 400, 200, 400]);
 }
 
-// 3 marta baland "bip-bip" (kvadrat to'lqin oddiy ovozdan balandroq eshitiladi)
+// Mashina signali: "bi-biip, bi-biip". Haqiqiy signal kabi ikki nota birga yangraydi (Fa + Lya)
 function beep() {
   if (!audio) return;
   const t = audio.currentTime;
-  for (let i = 0; i < 6; i++) {
-    const osc = audio.createOscillator(), gain = audio.createGain();
-    osc.type = "square";
-    osc.frequency.value = i % 2 ? 1320 : 880;
-    gain.gain.value = 0.8;
-    osc.connect(gain).connect(audio.destination);
-    osc.start(t + i * 0.25); osc.stop(t + i * 0.25 + 0.2);
+  const pattern = [[0, 0.18], [0.25, 0.5], [1.0, 0.18], [1.25, 0.5]];   // [boshlanishi, davomiyligi] soniyada
+  const filter = audio.createBiquadFilter();
+  filter.type = "lowpass"; filter.frequency.value = 2200;               // "temir" ovozni yumshatadi
+  filter.connect(audio.destination);
+  for (const [start, len] of pattern) {
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0, t + start);
+    gain.gain.linearRampToValueAtTime(0.6, t + start + 0.02);           // keskin, lekin chirsillamasdan
+    gain.gain.setValueAtTime(0.6, t + start + len - 0.03);
+    gain.gain.linearRampToValueAtTime(0, t + start + len);
+    gain.connect(filter);
+    for (const freq of [349, 440]) {
+      const osc = audio.createOscillator();
+      osc.type = "sawtooth"; osc.frequency.value = freq;
+      osc.connect(gain);
+      osc.start(t + start); osc.stop(t + start + len);
+    }
   }
 }
 
