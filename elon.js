@@ -40,11 +40,13 @@ export function adHtml(ad) {
     <div class="e-row">
       ${ad.image ? `<img class="e-img" src="${esc(ad.image)}" alt="">` : ""}
       <div class="e-text">
-        <small>${ad.isDefault ? "Reklama joyi" : "Reklama"}</small>
+        <div class="e-top">
+          <small>${ad.isDefault ? "Reklama joyi" : "Reklama"}</small>
+          ${ad.isDefault ? "" : `<a class="e-cta" href="${TELEGRAM}" target="_blank" rel="noopener">📢 Siz ham reklama bering</a>`}
+        </div>
         <b>${esc(ad.title)}</b>
         ${ad.sub ? `<span>${esc(ad.sub)}</span>` : ""}
       </div>
       <a class="e-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")}</a>
-    </div>
-    ${ad.isDefault ? "" : `<a class="e-cta" href="${TELEGRAM}" target="_blank" rel="noopener">📢 Reklama joylash uchun bosing</a>`}`;
+    </div>`;
 }
