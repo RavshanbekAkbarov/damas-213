@@ -37,6 +37,7 @@ button.danger { background: var(--late); color: #fff; }
          font-weight: 700; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .damas.full { background: var(--late); }
 .damas.stale { background: #9aa3a0; }
+.van.me img { filter: drop-shadow(0 0 4px #1a4fd6) drop-shadow(0 0 4px #1a4fd6); }
 .van.old img { opacity: .5; filter: grayscale(1); }
 .pitak { background: #1a4fd6; color: #fff; border-radius: 8px; padding: 3px 7px; font-weight: 700;
          white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
@@ -51,3 +52,11 @@ button.danger { background: var(--late); color: #fff; }
                display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
 .install-box ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 #video iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px; }
+
+/* Haydovchi: yangi yo'lovchi signali */
+.alert { position: fixed; left: 12px; right: 12px; top: max(12px, env(safe-area-inset-top)); z-index: 3000;
+         background: var(--late); color: #fff; font-size: 22px; font-weight: 700; text-align: center;
+         padding: 18px; border-radius: 14px; cursor: pointer; animation: blink .5s 12 alternate; }
+@keyframes blink { to { background: #8f1d14; } }
+@media (prefers-reduced-motion: reduce) { .alert { animation: none; } }
+.sound-hint { background: var(--ad); text-align: center; padding: 8px; font-size: 13px; }
