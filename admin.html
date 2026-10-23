@@ -22,10 +22,10 @@
   .bars { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
   .bar { display: grid; grid-template-columns: 52px 1fr 40px; gap: 8px; align-items: center; }
   .bar i { display: block; height: 10px; background: var(--accent); border-radius: 5px; min-width: 2px; }
-  .ad-item { display: flex; gap: 12px; align-items: flex-start; border-top: 1px solid var(--bg); padding-top: 12px; }
-  .ad-item img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
-  .ad-item .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-  .ad-item .info small { color: var(--muted); }
+  .ad-item { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--bg); padding-top: 14px; }
+  .ad-item small { color: var(--muted); }
+  .ad-banner { border-radius: 12px; overflow: hidden; }
+  .ad-banner a { pointer-events: none; }   /* admin panelda bannerdagi tugmalar ishlamaydi */
   .badge { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
   .running { background: #d6f2e2; color: #145c38; }
   .waiting { background: #fff0c2; color: #6b4e00; }
@@ -191,19 +191,17 @@ function renderList() {
     const row = document.createElement("div");
     row.className = "ad-item";
     row.innerHTML = `
-      ${ad.image ? `<img src="${ad.image}" alt="">` : ""}
-      <div class="info">
+      <div class="row">
         <span class="badge ${ad.status}">${STATUS[ad.status]}</span>
-        <b></b>
         <small>📅 ${when}${left}</small>
-        <small>👁 ${sum(views[ad.id])} koʻrish · 👆 ${sum(clicks[ad.id])} bosish</small>
-        <div class="row">
-          <button data-act="toggle">${ad.active ? "⏸ Toʻxtatish" : "▶️ Yoqish"}</button>
-          <button data-act="edit">✏️ Tahrirlash</button>
-          <button data-act="delete" class="danger">🗑</button>
-        </div>
+      </div>
+      <div class="ad-banner">${adHtml(ad)}</div>
+      <small>👁 ${sum(views[ad.id])} koʻrish · 👆 ${sum(clicks[ad.id])} bosish</small>
+      <div class="row">
+        <button data-act="toggle">${ad.active ? "⏸ Toʻxtatish" : "▶️ Yoqish"}</button>
+        <button data-act="edit">✏️ Tahrirlash</button>
+        <button data-act="delete" class="danger">🗑</button>
       </div>`;
-    row.querySelector("b").textContent = ad.title;       // textContent: matn HTML sifatida ishlamaydi
     row.querySelector('[data-act="toggle"]').onclick = () => update(ref(db, "ads/" + ad.id), { active: !ad.active });
     row.querySelector('[data-act="edit"]').onclick = () => startEdit(ad);
     const del = row.querySelector('[data-act="delete"]');

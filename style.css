@@ -26,7 +26,7 @@ button.danger { background: var(--late); color: #fff; }
         background: var(--fg); color: var(--bg); padding: 8px 12px; border-radius: 8px; }
 
 /* Reklama joyi: ekranning ~18% qismi */
-#ad, #preview { min-height: max(18vh, 110px); flex: none; box-sizing: border-box; background: var(--ad);
+#ad, #preview, .ad-banner { min-height: max(18vh, 110px); flex: none; box-sizing: border-box; background: var(--ad);
       padding: 10px 14px; padding-bottom: max(8px, env(safe-area-inset-bottom));
       display: flex; flex-direction: column; justify-content: center; gap: 6px;
       border-top: 2px solid #f2c94c; color: var(--fg); }
