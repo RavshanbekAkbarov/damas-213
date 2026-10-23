@@ -24,36 +24,17 @@
 
 <div id="map" style="flex:1"></div>
 <div id="hint" hidden>Turgan joyingizni xaritada bosing</div>
-<div id="ad">
-  <div class="ad-text">
-    <small>Reklama joyi</small>
-    <b id="adTitle"></b>
-    <span id="adSub"></span>
-  </div>
-  <a id="adBtn" class="ad-btn" target="_blank" rel="noopener">✈️ Aloqaga chiqing</a>
-</div>
+<div id="ad"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
-import { ref, push, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth } from "./config.js";
 import { liveMap } from "./map.js";
 import { setupInstall } from "./install.js";
+import { adHtml, DEFAULT_ADS } from "./ads.js";
 
-// Reklama: hozircha reklamachilarni taklif qiluvchi matnlar.
-// Haqiqiy reklama kelganda shu ro'yxatga qo'shasiz: { title, sub, link }
-const TELEGRAM = "https://t.me/RavshanAkbarov"; // reklama bo'yicha aloqa
-const ADS = [
-  { title: "Sizning reklamangiz shu yerda boʻlishi mumkin",
-    sub: "Damas kutayotgan har bir yoʻlovchi bu ekranni koʻradi", link: TELEGRAM },
-  { title: "Doʻkoningizni 5 ta qishloqqa tanishtiring",
-    sub: "Oqboʻyra, Oqtepa, Mullaqayragʻoch, Oyimcha va Fargʻona yoʻli", link: TELEGRAM },
-  { title: "Usta, toʻyxona yoki doʻkonmisiz?",
-    sub: "Mijozlaringiz har kuni Damasni shu ilovadan kutadi", link: TELEGRAM },
-  { title: "Qishloqdoshlaringiz har kuni shu yerga qaraydi",
-    sub: "Reklama narxini bilish uchun yozing", link: TELEGRAM }
-];
 const $ = id => document.getElementById(id);
 
 // Yo'lovchi ro'yxatdan o'tmaydi: anonim kirish (faqat o'z belgisini boshqarishi uchun)
@@ -113,15 +94,15 @@ map.on("click", e => { if (picking) addMe(e.latlng.lat, e.latlng.lng); });
 // ===== O'rnatish oynasi =====
 setupInstall({ title: "213 Damasni telefoningizga oʻrnating", videoId: "" }); // videoId: YouTube havolasidagi v= dan keyingi qism
 
-// ===== Reklama =====
-let adIndex = 0;
-function nextAd() {
-  const ad = ADS[adIndex++ % ADS.length];
-  $("adTitle").textContent = ad.title;
-  $("adSub").textContent = ad.sub;
-  $("adBtn").href = ad.link;
-}
-nextAd(); setInterval(nextAd, 8000);
+// ===== Reklama (admin paneldan keladi) =====
+let ads = DEFAULT_ADS, adIndex = 0;
+onValue(ref(db, "ads"), snap => {
+  const active = Object.values(snap.val() || {}).filter(ad => ad.active);
+  ads = active.length ? active : DEFAULT_ADS;   // faol reklama bo'lmasa: taklif matnlari
+  adIndex = 0; showAd();
+});
+function showAd() { $("ad").innerHTML = adHtml(ads[adIndex++ % ads.length]); }
+showAd(); setInterval(showAd, 8000);
 </script>
 </body>
 </html>

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>213 Damas: Admin</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { overflow-y: auto; }
+  main { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 560px;
+         width: 100%; margin: 0 auto; box-sizing: border-box; }
+  .card { background: var(--panel); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  input, textarea { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--muted);
+                    background: var(--bg); color: var(--fg); }
+  label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ad-item { display: flex; gap: 12px; align-items: center; border-top: 1px solid var(--bg); padding-top: 10px; }
+  .ad-item img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
+  .ad-item .info { flex: 1; min-width: 0; }
+  .ad-item.off { opacity: .45; }
+  #preview { border-radius: 12px; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<header><h1>🛠 213 Damas: Admin</h1></header>
+
+<main>
+  <form id="loginForm" class="card" hidden>
+    <b>Admin sifatida kirish</b>
+    <input id="login" placeholder="Login" autocomplete="username" required>
+    <input id="password" type="password" placeholder="Parol" autocomplete="current-password" required>
+    <small id="loginError" style="color:var(--late)"></small>
+    <button class="main">Kirish</button>
+  </form>
+
+  <section id="panel" hidden style="display:contents">
+    <form id="adForm" class="card">
+      <b id="formTitle">Yangi reklama</b>
+      <label>Sarlavha (katta yozuv)
+        <input id="title" maxlength="60" required placeholder="Oqboʻyra doʻkoni: hammasi bir joyda">
+      </label>
+      <label>Izoh (kichik yozuv)
+        <input id="sub" maxlength="90" placeholder="Har kuni 8:00–22:00, yetkazib berish bor">
+      </label>
+      <label>Tugma yozuvi
+        <input id="btnText" maxlength="20" placeholder="Qoʻngʻiroq qilish">
+      </label>
+      <label>Havola: telefon, Telegram yoki Instagram
+        <input id="link" required placeholder="+998901234567 yoki https://t.me/dokon">
+      </label>
+      <label>Rasm yoki logo (ixtiyoriy)
+        <input id="image" type="file" accept="image/*">
+      </label>
+      <div class="row">
+        <button class="main" id="saveBtn">Saqlash</button>
+        <button type="button" id="cancelEdit" hidden>Bekor qilish</button>
+      </div>
+      <b>Koʻrinishi:</b>
+      <div id="preview"></div>
+    </form>
+
+    <div class="card">
+      <b>Reklamalar</b>
+      <small style="color:var(--muted)">Faol reklama boʻlmasa, yoʻlovchilarga «Reklama joylash uchun yozing» matni chiqadi.</small>
+      <div id="list"></div>
+    </div>
+
+    <button id="logout">Chiqish</button>
+  </section>
+</main>
+
+<script type="module">
+import { ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { db, auth, loginToEmail } from "./config.js";
+import { adHtml, normalizeLink } from "./ads.js";
+
+const $ = id => document.getElementById(id);
+let ads = {}, editingId = null, imageData = "";
+
+// ===== Kirish =====
+onAuthStateChanged(auth, user => {
+  const ok = user && user.email === loginToEmail("admin");
+  $("loginForm").hidden = ok;
+  $("panel").hidden = !ok;
+  if (ok) listen();
+  else if (user && !user.isAnonymous) $("loginError").textContent = "Bu akkaunt admin emas.";
+});
+
+$("loginForm").onsubmit = async e => {
+  e.preventDefault();
+  $("loginError").textContent = "";
+  try { await signInWithEmailAndPassword(auth, loginToEmail($("login").value), $("password").value); }
+  catch { $("loginError").textContent = "Login yoki parol notoʻgʻri."; }
+};
+$("logout").onclick = () => signOut(auth);
+
+// ===== Ro'yxat =====
+let listening = false;
+function listen() {
+  if (listening) return;
+  listening = true;
+  onValue(ref(db, "ads"), snap => { ads = snap.val() || {}; renderList(); });
+}
+
+function renderList() {
+  const items = Object.entries(ads).sort((a, b) => b[1].createdAt - a[1].createdAt);
+  $("list").innerHTML = items.length ? "" : "<small>Hali reklama yoʻq</small>";
+  items.forEach(([id, ad]) => {
+    const row = document.createElement("div");
+    row.className = "ad-item" + (ad.active ? "" : " off");
+    row.innerHTML = `
+      ${ad.image ? `<img src="${ad.image}" alt="">` : ""}
+      <div class="info"><b></b><br><small></small></div>
+      <div class="row">
+        <button data-act="toggle">${ad.active ? "⏸ Toʻxtatish" : "▶️ Yoqish"}</button>
+        <button data-act="edit">✏️</button>
+        <button data-act="delete" class="danger">🗑</button>
+      </div>`;
+    row.querySelector("b").textContent = ad.title;       // textContent: xavfsiz (HTML kod ishlamaydi)
+    row.querySelector("small").textContent = ad.active ? "Faol" : "Toʻxtatilgan";
+    row.querySelector('[data-act="toggle"]').onclick = () => update(ref(db, "ads/" + id), { active: !ad.active });
+    row.querySelector('[data-act="edit"]').onclick = () => startEdit(id, ad);
+    const del = row.querySelector('[data-act="delete"]');
+    del.onclick = () => {                                // ikki marta bosib tasdiqlash
+      if (del.dataset.sure) return remove(ref(db, "ads/" + id));
+      del.dataset.sure = "1"; del.textContent = "Rostdanmi?";
+      setTimeout(() => { delete del.dataset.sure; del.textContent = "🗑"; }, 3000);
+    };
+    $("list").append(row);
+  });
+}
+
+// ===== Forma =====
+function formAd() {
+  return {
+    title: $("title").value.trim(),
+    sub: $("sub").value.trim(),
+    btnText: $("btnText").value.trim() || "Batafsil",
+    link: $("link").value.trim(),
+    image: imageData
+  };
+}
+
+function showPreview() { $("preview").innerHTML = adHtml({ ...formAd(), title: formAd().title || "Sarlavha" }); }
+["title", "sub", "btnText", "link"].forEach(id => $(id).oninput = showPreview);
+
+// Rasmni kichraytirib (eng ko'pi 300px) saqlaymiz: yo'lovchilar internetini tejash uchun
+$("image").onchange = () => {
+  const file = $("image").files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const scale = Math.min(1, 300 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas");
+    c.width = img.width * scale; c.height = img.height * scale;
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    imageData = c.toDataURL("image/jpeg", 0.8);
+    showPreview();
+  };
+  img.src = URL.createObjectURL(file);
+};
+
+$("adForm").onsubmit = async e => {
+  e.preventDefault();
+  const ad = formAd();
+  ad.link = normalizeLink(ad.link);
+  if (editingId) await update(ref(db, "ads/" + editingId), ad);
+  else await push(ref(db, "ads"), { ...ad, active: true, createdAt: Date.now() });
+  resetForm();
+};
+
+function startEdit(id, ad) {
+  editingId = id;
+  $("title").value = ad.title; $("sub").value = ad.sub || "";
+  $("btnText").value = ad.btnText || ""; $("link").value = ad.link;
+  imageData = ad.image || "";
+  $("formTitle").textContent = "Reklamani tahrirlash";
+  $("cancelEdit").hidden = false;
+  showPreview();
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resetForm() {
+  editingId = null; imageData = "";
+  $("adForm").reset();
+  $("formTitle").textContent = "Yangi reklama";
+  $("cancelEdit").hidden = true;
+  showPreview();
+}
+$("cancelEdit").onclick = resetForm;
+showPreview();
+</script>
+</body>
+</html>
