@@ -29,18 +29,21 @@ button.danger { background: var(--late); color: #fff; }
 #elon, #elonPreview, .e-card { min-height: max(18vh, 110px); flex: none; box-sizing: border-box; background: var(--ad);
       padding: 10px 14px; padding-bottom: max(8px, env(safe-area-inset-bottom));
       display: flex; flex-direction: column; justify-content: center; gap: 6px;
-      border-top: 2px solid #f2c94c; color: var(--fg); }
+      border-top: 2px solid #f2c94c; color: var(--fg); position: relative; }
 .e-row { display: flex; gap: 12px; align-items: center; min-height: 0; }
+.e-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .e-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.e-cta { font-size: 11px; font-weight: 700; text-decoration: none; white-space: nowrap;
-         background: #f2994a; color: #fff; padding: 2px 8px; border-radius: 10px; }
-.e-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.e-text small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
-.e-text b { font-size: 16px; line-height: 1.25; }
-.e-text span { font-size: 13px; color: var(--muted); }
-.e-img { flex: none; height: 64px; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+.e-top small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.e-text b { font-size: 18px; line-height: 1.25; }
+.e-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.e-foot span { font-size: 14px; color: var(--muted); min-width: 0; }
+.e-img { flex: none; width: 72px; height: 72px; object-fit: cover; border-radius: 10px; }
+/* Kichik tugma; ::after butun reklamani bosiladigan qiladi */
 .e-btn { flex: none; background: #229ED9; color: #fff; text-decoration: none; font-weight: 700;
-          padding: 12px 14px; border-radius: 12px; white-space: nowrap; }
+         font-size: 12px; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+.e-btn::after { content: ""; position: absolute; inset: 0; }
+.e-cta { position: relative; z-index: 1; font-size: 11px; font-weight: 700; text-decoration: none; white-space: nowrap;
+         background: #f2994a; color: #fff; padding: 2px 8px; border-radius: 10px; }
 
 /* Xarita belgilari */
 .van { position: relative; width: 40px; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }

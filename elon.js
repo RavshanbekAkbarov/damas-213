@@ -45,8 +45,10 @@ export function adHtml(ad) {
           ${ad.isDefault ? "" : `<a class="e-cta" href="${TELEGRAM}" target="_blank" rel="noopener">📢 Siz ham reklama bering</a>`}
         </div>
         <b>${esc(ad.title)}</b>
-        ${ad.sub ? `<span>${esc(ad.sub)}</span>` : ""}
+        <div class="e-foot">
+          <span>${esc(ad.sub || "")}</span>
+          <a class="e-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")} ›</a>
+        </div>
       </div>
-      <a class="e-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")}</a>
     </div>`;
 }
