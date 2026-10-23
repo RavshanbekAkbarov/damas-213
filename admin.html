@@ -11,7 +11,7 @@
   main { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 640px;
          width: 100%; margin: 0 auto; box-sizing: border-box; }
   .card { background: var(--panel); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--muted);
+  input, select { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--muted);
           background: var(--bg); color: var(--fg); min-width: 0; }
   label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; flex: 1; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -68,6 +68,13 @@
 
     <form id="adForm" class="card">
       <b id="formTitle">Yangi reklama</b>
+      <label>Reklama turi
+        <select id="kind">
+          <option value="text">📝 Matn (rasm/logo ixtiyoriy)</option>
+          <option value="image">🖼 Faqat rasm (banner)</option>
+          <option value="video">🎬 Video (YouTube)</option>
+        </select>
+      </label>
       <label>Sarlavha (katta yozuv)
         <input id="title" maxlength="60" required placeholder="Oqboʻyra doʻkoni: hammasi bir joyda">
       </label>
@@ -82,7 +89,10 @@
         <label>Boshlanishi <input id="start" type="date" required></label>
         <label>Tugashi <input id="end" type="date" required></label>
       </div>
-      <label>Rasm yoki logo (ixtiyoriy) <input id="image" type="file" accept="image/*"></label>
+      <label id="imageLabel"><span id="imageHint">Rasm yoki logo (ixtiyoriy)</span> <input id="image" type="file" accept="image/*"></label>
+      <label id="videoLabel" hidden>YouTube havolasi (Shorts ham boʻladi)
+        <input id="video" placeholder="https://youtube.com/shorts/...">
+      </label>
       <div class="row">
         <button class="main">Saqlash</button>
         <button type="button" id="cancelEdit" hidden>Bekor qilish</button>
@@ -99,7 +109,7 @@
 import { ref, onValue, push, update, remove, query, orderByKey, startAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth, loginToEmail } from "./config.js";
-import { adHtml, adStatus, normalizeLink } from "./elon.js";
+import { adHtml, adStatus, normalizeLink, youtubeId } from "./elon.js";
 import { dayKey } from "./stats.js";
 
 const $ = id => document.getElementById(id);
@@ -206,7 +216,7 @@ function renderRow(ad, today) {
         <span class="badge ${ad.status}">${STATUS[ad.status]}</span>
         <small>📅 ${when}${left}</small>
       </div>
-      <div class="e-card">${adHtml(ad)}</div>
+      <div class="e-card">${adHtml(ad, { thumb: true })}</div>
       <small>👁 ${sum(views[ad.id])} koʻrish · 👆 ${sum(clicks[ad.id])} bosish</small>
       <div class="row">
         <button data-act="toggle">${ad.active ? "⏸ Toʻxtatish" : "▶️ Yoqish"}</button>
@@ -234,24 +244,39 @@ function formAd() {
     link: $("link").value.trim(),
     start: $("start").value,
     end: $("end").value,
+    kind: $("kind").value,
+    video: $("kind").value === "video" ? $("video").value.trim() : "",
     image: imageData
   };
 }
 
 function showPreview() { const ad = formAd(); $("elonPreview").innerHTML = adHtml({ ...ad, title: ad.title || "Sarlavha" }); }
-["title", "sub", "btnText", "link"].forEach(id => $(id).oninput = showPreview);
+["title", "sub", "btnText", "link", "video"].forEach(id => $(id).oninput = showPreview);
 
-// Rasmni kichraytirib (eng ko'pi 300px) saqlaymiz: yo'lovchilar internetini tejash uchun
+// Tur o'zgarganda kerakli maydonlarni ko'rsatamiz
+$("kind").onchange = () => {
+  const kind = $("kind").value;
+  $("videoLabel").hidden = kind !== "video";
+  $("imageLabel").hidden = kind === "video";
+  $("imageHint").textContent = kind === "image"
+    ? "Banner rasm (majburiy, eni boʻyidan ~3 marta katta boʻlsa yaxshi: masalan 1200×400)"
+    : "Rasm yoki logo (ixtiyoriy)";
+  showPreview();
+};
+
+// Rasmni kichraytirib saqlaymiz: yo'lovchilar internetini tejash uchun
+// (banner uchun eni 720px gacha, logo uchun 300px gacha)
 $("image").onchange = () => {
   const file = $("image").files[0];
   if (!file) return;
   const img = new Image();
   img.onload = () => {
-    const scale = Math.min(1, 300 / Math.max(img.width, img.height));
+    const max = $("kind").value === "image" ? 720 : 300;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
     const c = document.createElement("canvas");
     c.width = img.width * scale; c.height = img.height * scale;
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    imageData = c.toDataURL("image/jpeg", 0.8);
+    imageData = c.toDataURL("image/jpeg", 0.75);
     showPreview();
   };
   img.src = URL.createObjectURL(file);
@@ -261,6 +286,8 @@ $("adForm").onsubmit = async e => {
   e.preventDefault();
   const ad = formAd();
   if (ad.end < ad.start) { alertField("end", "Tugash sanasi boshlanishdan oldin boʻlmasligi kerak"); return; }
+  if (ad.kind === "image" && !ad.image) { alertField("image", "Banner rasmini tanlang"); return; }
+  if (ad.kind === "video" && !youtubeId(ad.video)) { alertField("video", "YouTube havolasi notoʻgʻri"); return; }
   ad.link = normalizeLink(ad.link);
   if (editingId) await update(ref(db, "ads/" + editingId), ad);
   else await push(ref(db, "ads"), { ...ad, active: true, createdAt: Date.now() });
@@ -278,6 +305,8 @@ function startEdit(ad) {
   $("btnText").value = ad.btnText || ""; $("link").value = ad.link;
   $("start").value = ad.start || dayKey(); $("end").value = ad.end || addDays(30);
   imageData = ad.image || "";
+  $("kind").value = ad.kind || "text"; $("video").value = ad.video || "";
+  $("kind").onchange();
   $("formTitle").textContent = "Reklamani tahrirlash";
   $("cancelEdit").hidden = false;
   showPreview();
@@ -290,7 +319,7 @@ function resetForm() {
   $("start").value = dayKey(); $("end").value = addDays(30);   // standart: bugundan 30 kun
   $("formTitle").textContent = "Yangi reklama";
   $("cancelEdit").hidden = true;
-  showPreview();
+  $("kind").onchange();
 }
 $("cancelEdit").onclick = resetForm;
 resetForm();

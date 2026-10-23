@@ -34,20 +34,43 @@ export function adStatus(ad, today) {
   return "running";
 }
 
-export function adHtml(ad) {
+// YouTube havolasidan video ID: youtu.be/ID, watch?v=ID, shorts/ID, embed/ID
+export function youtubeId(url = "") {
+  const m = String(url).match(/(?:youtu\.be\/|v=|shorts\/|embed\/)([\w-]{11})/) || String(url).match(/^([\w-]{11})$/);
+  return m ? m[1] : "";
+}
+
+// opts.thumb: videoni o'ynatmasdan rasm sifatida ko'rsatish (admin panel uchun)
+export function adHtml(ad, opts = {}) {
   const safeLink = /^(https?:|tel:)/.test(ad.link || "") ? ad.link : "#";
+  const btn = `<a class="e-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")} ›</a>`;
+
+  // 1) Faqat rasm: butun joyni banner egallaydi, tugma burchakda
+  if (ad.kind === "image" && ad.image) {
+    return `<img class="e-banner" src="${esc(ad.image)}" alt="${esc(ad.title)}">
+            <small class="e-label">Reklama</small>
+            <span class="e-chip">${esc(ad.btnText || "Batafsil")} ›</span>
+            <a class="e-btn e-cover" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener" aria-label="${esc(ad.title)}"></a>`;
+  }
+
+  // 2) Video yoki 3) matn (rasm/logo ixtiyoriy)
+  const vid = ad.kind === "video" ? youtubeId(ad.video) : "";
+  const media = vid
+    ? (opts.thumb
+        ? `<img class="e-video" src="https://i.ytimg.com/vi/${vid}/mqdefault.jpg" alt="">`
+        : `<iframe class="e-video" src="https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&loop=1&playlist=${vid}&controls=0&playsinline=1&rel=0"
+             allow="autoplay; encrypted-media" title="${esc(ad.title)}"></iframe>`)
+    : ad.image ? `<img class="e-img" src="${esc(ad.image)}" alt="">` : "";
+
   return `
     <div class="e-row">
-      ${ad.image ? `<img class="e-img" src="${esc(ad.image)}" alt="">` : ""}
+      ${media}
       <div class="e-text">
-        <div class="e-top">
-          <small>${ad.isDefault ? "Reklama joyi" : "Reklama"}</small>
-          ${ad.isDefault ? "" : `<a class="e-cta" href="${TELEGRAM}" target="_blank" rel="noopener">📢 Siz ham reklama bering</a>`}
-        </div>
+        <small class="e-small">${ad.isDefault ? "Reklama joyi" : "Reklama"}</small>
         <b>${esc(ad.title)}</b>
         <div class="e-foot">
           <span>${esc(ad.sub || "")}</span>
-          <a class="e-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")} ›</a>
+          ${btn}
         </div>
       </div>
     </div>`;

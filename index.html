@@ -113,24 +113,34 @@ map.on("click", e => { if (picking) addMe(e.latlng.lat, e.latlng.lng); });
 setupInstall({ title: "213 Damasni telefoningizga oʻrnating", buttonId: "btnInstall", videoId: "" }); // videoId: YouTube havolasidagi v= dan keyingi qism
 
 // ===== Reklama (admin paneldan keladi) =====
-let ads = DEFAULT_ADS, adIndex = 0;
+let ads = [], adIndex = 0, inviteIndex = 0, timer;
 onValue(ref(db, "ads"), snap => {
-  const active = Object.entries(snap.val() || {})
+  ads = Object.entries(snap.val() || {})
     .map(([id, ad]) => ({ ...ad, id }))
     .filter(ad => adStatus(ad, dayKey()) === "running");
-  ads = active.length ? active : DEFAULT_ADS;   // faol reklama bo'lmasa: taklif matnlari
   adIndex = 0; showAd();
 });
+
+// Har 3 ta reklamadan keyin bitta "Reklama bering" slaydi chiqadi.
+// Haqiqiy reklama bo'lmasa, faqat taklif slaydlari aylanadi.
+let shown = 0;
+function nextAd() {
+  if (!ads.length || shown % 4 === 3) return DEFAULT_ADS[inviteIndex++ % DEFAULT_ADS.length];
+  return ads[adIndex++ % ads.length];
+}
+
 function showAd() {
-  const ad = ads[adIndex++ % ads.length];
+  clearTimeout(timer);
+  const ad = nextAd(); shown++;
   $("elon").innerHTML = adHtml(ad);
   countAdView(ad.id);
+  timer = setTimeout(showAd, ad.kind === "video" ? 20000 : 10000);   // video 20 s, qolgani 10 s
 }
 $("elon").addEventListener("click", e => {
   const btn = e.target.closest(".e-btn");
   if (btn) countAdClick(btn.dataset.id);
 });
-showAd(); setInterval(showAd, 10000);   // har 10 soniyada almashadi
+showAd();
 </script>
 </body>
 </html>
