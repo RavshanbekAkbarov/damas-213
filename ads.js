@@ -26,6 +26,14 @@ export function normalizeLink(link) {
   return link;
 }
 
+// Reklama hozir ko'rsatiladimi: yoqilgan va bugun muddat ichida
+export function adStatus(ad, today) {
+  if (!ad.active) return "paused";
+  if (ad.start && today < ad.start) return "waiting";
+  if (ad.end && today > ad.end) return "ended";
+  return "running";
+}
+
 export function adHtml(ad) {
   const safeLink = /^(https?:|tel:)/.test(ad.link || "") ? ad.link : "#";
   return `
@@ -35,5 +43,5 @@ export function adHtml(ad) {
       <b>${esc(ad.title)}</b>
       ${ad.sub ? `<span>${esc(ad.sub)}</span>` : ""}
     </div>
-    <a class="ad-btn" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")}</a>`;
+    <a class="ad-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")}</a>`;
 }

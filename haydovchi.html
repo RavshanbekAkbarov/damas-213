@@ -77,6 +77,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https:/
 import { db, auth, loginToEmail, CAP, PITAKS, queueAt } from "./config.js";
 import { liveMap } from "./map.js";
 import { setupInstall } from "./install.js";
+import { trackUser } from "./stats.js";
 
 const $ = id => document.getElementById(id);
 let myId = null, me = null, drivers = {}, started = false;
@@ -91,6 +92,7 @@ onAuthStateChanged(auth, user => {
   $("loginForm").hidden = isDriver;
   if (!isDriver) { $("panel").hidden = $("profileForm").hidden = true; return; }
   myId = user.uid;
+  trackUser(myId, "haydovchi");
   start();
 });
 

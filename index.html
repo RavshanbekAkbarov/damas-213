@@ -33,12 +33,14 @@ import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/fi
 import { db, auth } from "./config.js";
 import { liveMap } from "./map.js";
 import { setupInstall } from "./install.js";
-import { adHtml, DEFAULT_ADS } from "./ads.js";
+import { adHtml, adStatus, DEFAULT_ADS } from "./ads.js";
+import { trackUser, dayKey, countAdView, countAdClick } from "./stats.js";
 
 const $ = id => document.getElementById(id);
 
 // Yo'lovchi ro'yxatdan o'tmaydi: anonim kirish (faqat o'z belgisini boshqarishi uchun)
 const ready = signInAnonymously(auth);
+ready.then(({ user }) => trackUser(user.uid, "yolovchi"));
 
 // ===== Xarita =====
 let passengers = {};
@@ -97,11 +99,21 @@ setupInstall({ title: "213 Damasni telefoningizga oʻrnating", videoId: "" }); /
 // ===== Reklama (admin paneldan keladi) =====
 let ads = DEFAULT_ADS, adIndex = 0;
 onValue(ref(db, "ads"), snap => {
-  const active = Object.values(snap.val() || {}).filter(ad => ad.active);
+  const active = Object.entries(snap.val() || {})
+    .map(([id, ad]) => ({ ...ad, id }))
+    .filter(ad => adStatus(ad, dayKey()) === "running");
   ads = active.length ? active : DEFAULT_ADS;   // faol reklama bo'lmasa: taklif matnlari
   adIndex = 0; showAd();
 });
-function showAd() { $("ad").innerHTML = adHtml(ads[adIndex++ % ads.length]); }
+function showAd() {
+  const ad = ads[adIndex++ % ads.length];
+  $("ad").innerHTML = adHtml(ad);
+  countAdView(ad.id);
+}
+$("ad").addEventListener("click", e => {
+  const btn = e.target.closest(".ad-btn");
+  if (btn) countAdClick(btn.dataset.id);
+});
 showAd(); setInterval(showAd, 8000);
 </script>
 </body>

@@ -8,17 +8,28 @@
 <link rel="stylesheet" href="style.css">
 <style>
   body { overflow-y: auto; }
-  main { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 560px;
+  main { padding: 16px; display: flex; flex-direction: column; gap: 14px; max-width: 640px;
          width: 100%; margin: 0 auto; box-sizing: border-box; }
   .card { background: var(--panel); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  input, textarea { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--muted);
-                    background: var(--bg); color: var(--fg); }
-  label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--muted);
+          background: var(--bg); color: var(--fg); min-width: 0; }
+  label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; flex: 1; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .ad-item { display: flex; gap: 12px; align-items: center; border-top: 1px solid var(--bg); padding-top: 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .tile { background: var(--bg); border-radius: 12px; padding: 12px; }
+  .tile small { color: var(--muted); display: block; }
+  .tile b { font-size: 26px; font-variant-numeric: tabular-nums; }
+  .bars { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .bar { display: grid; grid-template-columns: 52px 1fr 40px; gap: 8px; align-items: center; }
+  .bar i { display: block; height: 10px; background: var(--accent); border-radius: 5px; min-width: 2px; }
+  .ad-item { display: flex; gap: 12px; align-items: flex-start; border-top: 1px solid var(--bg); padding-top: 12px; }
   .ad-item img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
-  .ad-item .info { flex: 1; min-width: 0; }
-  .ad-item.off { opacity: .45; }
+  .ad-item .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ad-item .info small { color: var(--muted); }
+  .badge { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .running { background: #d6f2e2; color: #145c38; }
+  .waiting { background: #fff0c2; color: #6b4e00; }
+  .ended, .paused { background: #e4e7e5; color: #4a524d; }
   #preview { border-radius: 12px; overflow: hidden; }
 </style>
 </head>
@@ -36,6 +47,25 @@
   </form>
 
   <section id="panel" hidden style="display:contents">
+    <!-- Umumiy holat -->
+    <div class="card">
+      <b>Hozirgi holat</b>
+      <div class="tiles">
+        <div class="tile"><small>Hozir onlayn</small><b id="tOnline">0</b><small id="tOnlineSplit"></small></div>
+        <div class="tile"><small>Bugun kirganlar</small><b id="tToday">0</b></div>
+        <div class="tile"><small>Kutayotgan yoʻlovchi</small><b id="tWaiting">0</b></div>
+        <div class="tile"><small>Damaslar</small><b id="tDrivers">0</b><small id="tDriversSplit"></small></div>
+      </div>
+      <b>Oxirgi 7 kun (kirgan odamlar)</b>
+      <div class="bars" id="week"></div>
+    </div>
+
+    <!-- Reklamalar -->
+    <div class="card">
+      <b>Reklamalar</b>
+      <div id="list"></div>
+    </div>
+
     <form id="adForm" class="card">
       <b id="formTitle">Yangi reklama</b>
       <label>Sarlavha (katta yozuv)
@@ -44,41 +74,40 @@
       <label>Izoh (kichik yozuv)
         <input id="sub" maxlength="90" placeholder="Har kuni 8:00–22:00, yetkazib berish bor">
       </label>
-      <label>Tugma yozuvi
-        <input id="btnText" maxlength="20" placeholder="Qoʻngʻiroq qilish">
-      </label>
-      <label>Havola: telefon, Telegram yoki Instagram
-        <input id="link" required placeholder="+998901234567 yoki https://t.me/dokon">
-      </label>
-      <label>Rasm yoki logo (ixtiyoriy)
-        <input id="image" type="file" accept="image/*">
-      </label>
       <div class="row">
-        <button class="main" id="saveBtn">Saqlash</button>
+        <label>Tugma yozuvi <input id="btnText" maxlength="20" placeholder="Qoʻngʻiroq qilish"></label>
+        <label>Havola <input id="link" required placeholder="+998901234567 yoki @dokon"></label>
+      </div>
+      <div class="row">
+        <label>Boshlanishi <input id="start" type="date" required></label>
+        <label>Tugashi <input id="end" type="date" required></label>
+      </div>
+      <label>Rasm yoki logo (ixtiyoriy) <input id="image" type="file" accept="image/*"></label>
+      <div class="row">
+        <button class="main">Saqlash</button>
         <button type="button" id="cancelEdit" hidden>Bekor qilish</button>
       </div>
       <b>Koʻrinishi:</b>
       <div id="preview"></div>
     </form>
 
-    <div class="card">
-      <b>Reklamalar</b>
-      <small style="color:var(--muted)">Faol reklama boʻlmasa, yoʻlovchilarga «Reklama joylash uchun yozing» matni chiqadi.</small>
-      <div id="list"></div>
-    </div>
-
     <button id="logout">Chiqish</button>
   </section>
 </main>
 
 <script type="module">
-import { ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, push, update, remove, query, orderByKey, startAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth, loginToEmail } from "./config.js";
-import { adHtml, normalizeLink } from "./ads.js";
+import { adHtml, adStatus, normalizeLink } from "./ads.js";
+import { dayKey } from "./stats.js";
 
 const $ = id => document.getElementById(id);
-let ads = {}, editingId = null, imageData = "";
+const MONTHS = ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
+const nice = key => { const [, m, d] = key.split("-"); return `${+d} ${MONTHS[m - 1]}`; };
+const addDays = (n, from = new Date()) => { const d = new Date(from); d.setDate(d.getDate() + n); return dayKey(d); };
+
+let ads = {}, views = {}, clicks = {}, editingId = null, imageData = "";
 
 // ===== Kirish =====
 onAuthStateChanged(auth, user => {
@@ -97,35 +126,89 @@ $("loginForm").onsubmit = async e => {
 };
 $("logout").onclick = () => signOut(auth);
 
-// ===== Ro'yxat =====
+// ===== Ma'lumotlarni tinglash =====
 let listening = false;
 function listen() {
   if (listening) return;
   listening = true;
+
+  onValue(ref(db, "online"), snap => {
+    const all = Object.values(snap.val() || {});
+    const drivers = all.filter(u => u.role === "haydovchi").length;
+    $("tOnline").textContent = all.length;
+    $("tOnlineSplit").textContent = `${all.length - drivers} yoʻlovchi, ${drivers} haydovchi`;
+  });
+
+  // Faqat oxirgi 7 kun yuklanadi
+  onValue(query(ref(db, "stats/daily"), orderByKey(), startAt(addDays(-6))), snap => {
+    const days = snap.val() || {};
+    const counts = [...Array(7)].map((_, i) => {
+      const key = addDays(i - 6);
+      return [key, Object.keys(days[key] || {}).length];
+    });
+    const max = Math.max(1, ...counts.map(c => c[1]));
+    $("tToday").textContent = counts[6][1];
+    $("week").innerHTML = counts.map(([key, n]) =>
+      `<div class="bar"><span>${nice(key)}</span><i style="width:${n / max * 100}%"></i><span>${n}</span></div>`).join("");
+  });
+
+  onValue(ref(db, "passengers"), snap => $("tWaiting").textContent = Object.keys(snap.val() || {}).length);
+
+  onValue(ref(db, "drivers"), snap => {
+    const all = Object.values(snap.val() || {});
+    const road = all.filter(d => d.status === "road").length;
+    $("tDrivers").textContent = all.length;
+    $("tDriversSplit").textContent = `${road} yoʻlda, ${all.length - road} pitakda`;
+  });
+
   onValue(ref(db, "ads"), snap => { ads = snap.val() || {}; renderList(); });
+  onValue(ref(db, "stats/adViews"), snap => { views = snap.val() || {}; renderList(); });
+  onValue(ref(db, "stats/adClicks"), snap => { clicks = snap.val() || {}; renderList(); });
 }
 
+// ===== Reklamalar ro'yxati =====
+const STATUS = {
+  running: "🟢 Faol", waiting: "🕓 Kutilmoqda", ended: "⚪ Muddati tugagan", paused: "⏸ Toʻxtatilgan"
+};
+const ORDER = { running: 0, waiting: 1, paused: 2, ended: 3 };
+const sum = obj => Object.values(obj || {}).reduce((a, b) => a + b, 0);
+
 function renderList() {
-  const items = Object.entries(ads).sort((a, b) => b[1].createdAt - a[1].createdAt);
-  $("list").innerHTML = items.length ? "" : "<small>Hali reklama yoʻq</small>";
-  items.forEach(([id, ad]) => {
+  const today = dayKey();
+  const items = Object.entries(ads)
+    .map(([id, ad]) => ({ ...ad, id, status: adStatus(ad, today) }))
+    .sort((a, b) => ORDER[a.status] - ORDER[b.status] || b.createdAt - a.createdAt);
+
+  const running = items.filter(ad => ad.status === "running").length;
+  $("list").innerHTML = `<small style="color:var(--muted)">${running
+    ? `Hozir ${running} ta reklama koʻrsatilmoqda.`
+    : "Faol reklama yoʻq: yoʻlovchilarga «Reklama joylash uchun yozing» chiqadi."}</small>`;
+
+  items.forEach(ad => {
+    const daysLeft = Math.round((new Date(ad.end) - new Date(today)) / 864e5);
+    const when = ad.start && ad.end ? `${nice(ad.start)} – ${nice(ad.end)}` : "Muddatsiz";
+    const left = ad.status === "running" ? ` · ${daysLeft === 0 ? "bugun oxirgi kun" : daysLeft + " kun qoldi"}` : "";
     const row = document.createElement("div");
-    row.className = "ad-item" + (ad.active ? "" : " off");
+    row.className = "ad-item";
     row.innerHTML = `
       ${ad.image ? `<img src="${ad.image}" alt="">` : ""}
-      <div class="info"><b></b><br><small></small></div>
-      <div class="row">
-        <button data-act="toggle">${ad.active ? "⏸ Toʻxtatish" : "▶️ Yoqish"}</button>
-        <button data-act="edit">✏️</button>
-        <button data-act="delete" class="danger">🗑</button>
+      <div class="info">
+        <span class="badge ${ad.status}">${STATUS[ad.status]}</span>
+        <b></b>
+        <small>📅 ${when}${left}</small>
+        <small>👁 ${sum(views[ad.id])} koʻrish · 👆 ${sum(clicks[ad.id])} bosish</small>
+        <div class="row">
+          <button data-act="toggle">${ad.active ? "⏸ Toʻxtatish" : "▶️ Yoqish"}</button>
+          <button data-act="edit">✏️ Tahrirlash</button>
+          <button data-act="delete" class="danger">🗑</button>
+        </div>
       </div>`;
-    row.querySelector("b").textContent = ad.title;       // textContent: xavfsiz (HTML kod ishlamaydi)
-    row.querySelector("small").textContent = ad.active ? "Faol" : "Toʻxtatilgan";
-    row.querySelector('[data-act="toggle"]').onclick = () => update(ref(db, "ads/" + id), { active: !ad.active });
-    row.querySelector('[data-act="edit"]').onclick = () => startEdit(id, ad);
+    row.querySelector("b").textContent = ad.title;       // textContent: matn HTML sifatida ishlamaydi
+    row.querySelector('[data-act="toggle"]').onclick = () => update(ref(db, "ads/" + ad.id), { active: !ad.active });
+    row.querySelector('[data-act="edit"]').onclick = () => startEdit(ad);
     const del = row.querySelector('[data-act="delete"]');
     del.onclick = () => {                                // ikki marta bosib tasdiqlash
-      if (del.dataset.sure) return remove(ref(db, "ads/" + id));
+      if (del.dataset.sure) return remove(ref(db, "ads/" + ad.id));
       del.dataset.sure = "1"; del.textContent = "Rostdanmi?";
       setTimeout(() => { delete del.dataset.sure; del.textContent = "🗑"; }, 3000);
     };
@@ -140,11 +223,13 @@ function formAd() {
     sub: $("sub").value.trim(),
     btnText: $("btnText").value.trim() || "Batafsil",
     link: $("link").value.trim(),
+    start: $("start").value,
+    end: $("end").value,
     image: imageData
   };
 }
 
-function showPreview() { $("preview").innerHTML = adHtml({ ...formAd(), title: formAd().title || "Sarlavha" }); }
+function showPreview() { const ad = formAd(); $("preview").innerHTML = adHtml({ ...ad, title: ad.title || "Sarlavha" }); }
 ["title", "sub", "btnText", "link"].forEach(id => $(id).oninput = showPreview);
 
 // Rasmni kichraytirib (eng ko'pi 300px) saqlaymiz: yo'lovchilar internetini tejash uchun
@@ -166,32 +251,40 @@ $("image").onchange = () => {
 $("adForm").onsubmit = async e => {
   e.preventDefault();
   const ad = formAd();
+  if (ad.end < ad.start) { alertField("end", "Tugash sanasi boshlanishdan oldin boʻlmasligi kerak"); return; }
   ad.link = normalizeLink(ad.link);
   if (editingId) await update(ref(db, "ads/" + editingId), ad);
   else await push(ref(db, "ads"), { ...ad, active: true, createdAt: Date.now() });
   resetForm();
 };
 
-function startEdit(id, ad) {
-  editingId = id;
+function alertField(id, text) {
+  $(id).setCustomValidity(text); $(id).reportValidity();
+  $(id).oninput = () => $(id).setCustomValidity("");
+}
+
+function startEdit(ad) {
+  editingId = ad.id;
   $("title").value = ad.title; $("sub").value = ad.sub || "";
   $("btnText").value = ad.btnText || ""; $("link").value = ad.link;
+  $("start").value = ad.start || dayKey(); $("end").value = ad.end || addDays(30);
   imageData = ad.image || "";
   $("formTitle").textContent = "Reklamani tahrirlash";
   $("cancelEdit").hidden = false;
   showPreview();
-  scrollTo({ top: 0, behavior: "smooth" });
+  $("adForm").scrollIntoView({ behavior: "smooth" });
 }
 
 function resetForm() {
   editingId = null; imageData = "";
   $("adForm").reset();
+  $("start").value = dayKey(); $("end").value = addDays(30);   // standart: bugundan 30 kun
   $("formTitle").textContent = "Yangi reklama";
   $("cancelEdit").hidden = true;
   showPreview();
 }
 $("cancelEdit").onclick = resetForm;
-showPreview();
+resetForm();
 </script>
 </body>
 </html>
