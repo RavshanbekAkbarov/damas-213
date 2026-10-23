@@ -24,7 +24,14 @@
 
 <div id="map" style="flex:1"></div>
 <div id="hint" hidden>Turgan joyingizni xaritada bosing</div>
-<div id="ad"><small>Reklama</small><span id="adText"></span></div>
+<div id="ad">
+  <div class="ad-text">
+    <small>Reklama joyi</small>
+    <b id="adTitle"></b>
+    <span id="adSub"></span>
+  </div>
+  <a id="adBtn" class="ad-btn" target="_blank" rel="noopener">✈️ Aloqaga chiqing</a>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
@@ -34,7 +41,19 @@ import { db, auth } from "./config.js";
 import { liveMap } from "./map.js";
 import { setupInstall } from "./install.js";
 
-const ADS = ["🛒 Oqboʻyra doʻkoni: yangi mahsulotlar", "🔧 Avto usta: tez va arzon", "🎉 Toʻyxona band qilish"];
+// Reklama: hozircha reklamachilarni taklif qiluvchi matnlar.
+// Haqiqiy reklama kelganda shu ro'yxatga qo'shasiz: { title, sub, link }
+const TELEGRAM = "https://t.me/RavshanAkbarov"; // reklama bo'yicha aloqa
+const ADS = [
+  { title: "Sizning reklamangiz shu yerda boʻlishi mumkin",
+    sub: "Damas kutayotgan har bir yoʻlovchi bu ekranni koʻradi", link: TELEGRAM },
+  { title: "Doʻkoningizni 5 ta qishloqqa tanishtiring",
+    sub: "Oqboʻyra, Oqtepa, Mullaqayragʻoch, Oyimcha va Fargʻona yoʻli", link: TELEGRAM },
+  { title: "Usta, toʻyxona yoki doʻkonmisiz?",
+    sub: "Mijozlaringiz har kuni Damasni shu ilovadan kutadi", link: TELEGRAM },
+  { title: "Qishloqdoshlaringiz har kuni shu yerga qaraydi",
+    sub: "Reklama narxini bilish uchun yozing", link: TELEGRAM }
+];
 const $ = id => document.getElementById(id);
 
 // Yo'lovchi ro'yxatdan o'tmaydi: anonim kirish (faqat o'z belgisini boshqarishi uchun)
@@ -96,8 +115,13 @@ setupInstall({ title: "213 Damasni telefoningizga oʻrnating", videoId: "" }); /
 
 // ===== Reklama =====
 let adIndex = 0;
-const nextAd = () => $("adText").textContent = ADS[adIndex++ % ADS.length];
-nextAd(); setInterval(nextAd, 6000);
+function nextAd() {
+  const ad = ADS[adIndex++ % ADS.length];
+  $("adTitle").textContent = ad.title;
+  $("adSub").textContent = ad.sub;
+  $("adBtn").href = ad.link;
+}
+nextAd(); setInterval(nextAd, 8000);
 </script>
 </body>
 </html>
