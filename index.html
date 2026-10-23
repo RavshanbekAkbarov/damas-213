@@ -30,7 +30,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
 import { ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth } from "./config.js";
 import { liveMap } from "./map.js";
 import { setupInstall } from "./install.js";
@@ -39,8 +39,14 @@ import { trackUser, dayKey, countAdView, countAdClick } from "./stats.js";
 
 const $ = id => document.getElementById(id);
 
-// Yo'lovchi ro'yxatdan o'tmaydi: anonim kirish (faqat o'z belgisini boshqarishi uchun)
-const ready = signInAnonymously(auth);
+// Yo'lovchi ro'yxatdan o'tmaydi. Avval tekshiramiz: bu telefon allaqachon kirganmi
+// (anonim, haydovchi yoki admin). Faqat hech kim kirmagan bo'lsa, yangi anonim akkaunt ochiladi.
+const ready = new Promise(resolve => {
+  const stop = onAuthStateChanged(auth, user => {
+    stop();
+    resolve(user ? { user } : signInAnonymously(auth));
+  });
+});
 ready.then(({ user }) => trackUser(user.uid, "yolovchi"));
 
 // ===== Xarita =====
