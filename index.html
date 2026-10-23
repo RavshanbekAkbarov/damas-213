@@ -16,11 +16,7 @@
   <h1>🚐 213 Damas</h1>
   <button id="btnInstall" hidden>📲 Oʻrnatish</button>
   <button id="btnGo" class="main">🙋 Men ketaman</button>
-  <div class="stats">
-    <span>Kutmoqda: <b id="sWait">0</b></span>
-    <span>Yoʻlda: <b id="sRoad">0</b></span>
-    <span>Pitakda: <b id="sPitak">0</b></span>
-  </div>
+  <div class="stats" id="stats"></div>
 </header>
 
 <div id="map" style="flex:1"></div>
@@ -32,7 +28,7 @@
 import { ref, push, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth } from "./config.js";
-import { liveMap } from "./map.js";
+import { liveMap, statsHtml } from "./map.js";
 import { setupInstall } from "./install.js";
 import { adHtml, adStatus, DEFAULT_ADS } from "./elon.js";
 import { trackUser, dayKey, countAdView, countAdClick } from "./stats.js";
@@ -55,9 +51,7 @@ const map = liveMap("map", {
   myPaxId,
   onUpdate: (d, p, stats) => {
     passengers = p;
-    $("sWait").textContent = stats.waiting;
-    $("sRoad").textContent = stats.road;
-    $("sPitak").textContent = stats.pitak;
+    $("stats").innerHTML = statsHtml(stats);
     updateButton();
   }
 });
@@ -66,18 +60,33 @@ const map = liveMap("map", {
 const btn = $("btnGo"), hint = $("hint");
 let picking = false;
 
+function showToast(text) {
+  let t = $("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; document.body.append(t); }
+  t.textContent = text; t.hidden = false;
+  clearTimeout(t.timer); t.timer = setTimeout(() => t.hidden = true, 5000);
+}
+
 function myPaxId() { try { return localStorage.getItem("myPax"); } catch (e) { return null; } }
 function setMyId(id) { try { id ? localStorage.setItem("myPax", id) : localStorage.removeItem("myPax"); } catch (e) {} }
 
+let wasWaiting = null;   // oxirgi marta ko'rgan o'z belgimiz
 function updateButton() {
   const waiting = myPaxId() && passengers[myPaxId()];
+  // Belgimiz o'zimiz bosmasdan yo'qoldi: yo haydovchi oldi, yo 40 daqiqa o'tdi
+  if (wasWaiting && !waiting && myPaxId()) {
+    setMyId(null);
+    const expired = Date.now() - wasWaiting.since > 39 * 60000;
+    showToast(expired ? "⏱ Kutish vaqti tugadi. Kerak boʻlsa qayta bosing." : "🚐 Damasga mindingiz. Oq yoʻl!");
+  }
+  wasWaiting = waiting || null;
   btn.textContent = waiting ? "❌ Bekor qilish" : "🙋 Men ketaman";
   btn.className = waiting ? "danger" : "main";
 }
 
 btn.onclick = () => {
   if (myPaxId() && passengers[myPaxId()]) {        // bekor qilish
-    remove(ref(db, "passengers/" + myPaxId())); setMyId(null); return;
+    remove(ref(db, "passengers/" + myPaxId())); setMyId(null); wasWaiting = null; return;
   }
   // Avval GPS bilan joyni o'zi aniqlaymiz
   btn.textContent = "📍 Joy aniqlanmoqda…";
@@ -121,7 +130,7 @@ $("elon").addEventListener("click", e => {
   const btn = e.target.closest(".e-btn");
   if (btn) countAdClick(btn.dataset.id);
 });
-showAd(); setInterval(showAd, 8000);
+showAd(); setInterval(showAd, 15000);   // har 15 soniyada almashadi
 </script>
 </body>
 </html>

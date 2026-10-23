@@ -4,6 +4,28 @@ import { ref, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.2
 import { db, CAP, PITAKS, queueAt } from "./config.js";
 
 const VAN = `<img src="damas-marker.png" alt="Damas">`;
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// Telefon raqamini nusxalash va pastda qisqa xabar ko'rsatish
+export async function copyPhone(phone) {
+  if (!phone) return;
+  let ok = true;
+  try { await navigator.clipboard.writeText(phone.replace(/\s/g, "")); } catch { ok = false; }
+  toast(ok ? `📋 ${phone} nusxalandi` : `📞 ${phone}`);
+}
+function toast(text) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; document.body.append(t); }
+  t.textContent = text; t.hidden = false;
+  clearTimeout(t.timer); t.timer = setTimeout(() => t.hidden = true, 2500);
+}
+
+// Statistikani tushunarli matnga aylantirish (ikkala sahifa ishlatadi)
+export function statsHtml(s) {
+  return `<span>🙋 <b>${s.waiting}</b> kishi kutyapti</span>` +
+         `<span>🚐 <b>${s.road}</b> Damas yoʻlda</span>` +
+         `<span>🅿️ <b>${s.pitak}</b> Damas pitakda</span>`;
+}
 const icon = (html, anchor = [20, 12]) => L.divIcon({ className: "", html, iconAnchor: anchor });
 
 // opts.myPaxId(): yo'lovchining o'z belgisi ("Siz")
@@ -47,11 +69,15 @@ export function liveMap(elementId, opts = {}) {
       const stale = now - (d.updatedAt || 0) > 5 * 60000;
       const cls = stale ? "stale" : d.people >= CAP ? "full" : "";
       const me = opts.myDriverId && id === opts.myDriverId() ? " me" : "";
-      const html = `<div class="van${stale ? " old" : ""}${me}">${VAN}<span class="damas ${cls}">${d.people}/${CAP}</span></div>`;
+      const html = `<div class="van${stale ? " old" : ""}${me}">${VAN}<span class="damas ${cls}">${d.people}/${CAP}</span>` +
+                   `<span class="van-phone">📞 ${esc(d.phone)}</span></div>`;
       const ago = Math.round((now - (d.updatedAt || 0)) / 60000);
       const popup = `<b>${d.name}</b><br>📞 <span style="user-select:all">${d.phone}</span><br>Boʻsh joy: ${CAP - d.people}` +
                     `<br><small>${ago < 1 ? "hozir yangilandi" : ago + " daq oldin"}</small>`;
-      if (!roadMarkers[id]) roadMarkers[id] = L.marker([d.lat, d.lng]).addTo(map).bindPopup("");
+      if (!roadMarkers[id]) {
+        roadMarkers[id] = L.marker([d.lat, d.lng]).addTo(map).bindPopup("");
+        roadMarkers[id].on("click", () => copyPhone(drivers[id]?.phone));   // bosilganda raqam nusxalanadi
+      }
       roadMarkers[id].setLatLng([d.lat, d.lng]).setIcon(icon(html)).setPopupContent(popup);
     });
 

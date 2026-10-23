@@ -15,8 +15,8 @@
          width: 100%; margin: 0 auto; box-sizing: border-box; }
   .card { background: var(--panel); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
   .counter { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  .counter button { font-size: 40px; width: 90px; height: 90px; border-radius: 20px; }
-  .count { font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .counter button { font-size: 26px; width: 64px; height: 56px; border-radius: 14px; }
+  .count { font-size: 36px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .status { font-size: 18px; font-weight: 600; }
   input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--muted);
           background: var(--bg); color: var(--fg); }
@@ -24,7 +24,8 @@
 </head>
 <body>
 
-<header><h1>🚐 213 Damas: Haydovchi</h1><button id="btnInstall" hidden>📲 Oʻrnatish</button></header>
+<header><h1>🚐 213 Damas: Haydovchi</h1><button id="btnInstall" hidden>📲 Oʻrnatish</button>
+  <div class="stats" id="stats"></div></header>
 <div id="alert" class="alert" hidden></div>
 <div id="soundHint" class="sound-hint">🔔 Ovozli signal uchun ekranga bir marta teging</div>
 <div id="map"></div>
@@ -72,10 +73,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
-import { ref, onValue, onChildAdded, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { ref, onValue, onChildAdded, set, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth, loginToEmail, CAP, PITAKS, queueAt } from "./config.js";
-import { liveMap } from "./map.js";
+import { liveMap, statsHtml } from "./map.js";
 import { setupInstall } from "./install.js";
 import { trackUser } from "./stats.js";
 
@@ -83,7 +84,11 @@ const $ = id => document.getElementById(id);
 let myId = null, me = null, drivers = {}, started = false;
 
 // Xarita: haydovchi ham kutayotgan yo'lovchilarni ko'radi
-const map = liveMap("map", { myDriverId: () => myId });
+let passengers = {};
+const map = liveMap("map", {
+  myDriverId: () => myId,
+  onUpdate: (d, p, stats) => { passengers = p; $("stats").innerHTML = statsHtml(stats); }
+});
 setupInstall({ title: "Haydovchi ilovasini oʻrnating", buttonId: "btnInstall", storageKey: "installSeenDriver" });
 
 // ===== Kirish =====
@@ -146,7 +151,21 @@ function render() {
 // ===== Tugmalar =====
 const save = data => update(ref(db, "drivers/" + myId), data);
 
-$("plus").onclick  = () => me && me.people < CAP && save({ people: me.people + 1 });
+$("plus").onclick = () => {
+  if (!me || me.people >= CAP) return;
+  save({ people: me.people + 1 });
+  if (me.status === "road" && me.lat) pickUpNearest();
+};
+
+// Yo'lda odam olganda: 300 m ichidagi eng yaqin kutayotgan yo'lovchini xaritadan o'chiramiz
+function pickUpNearest() {
+  let bestId = null, bestDist = 300;
+  for (const [id, p] of Object.entries(passengers)) {
+    const d = distance([me.lat, me.lng], [p.lat, p.lng]);
+    if (d < bestDist) { bestDist = d; bestId = id; }
+  }
+  if (bestId) remove(ref(db, "passengers/" + bestId));
+}
 $("minus").onclick = () => me && me.people > 0   && save({ people: me.people - 1 });
 $("goRoad").onclick = () => { if (me.status !== "road") save({ status: "road", from: me.pitak }); };
 
@@ -185,6 +204,7 @@ onChildAdded(ref(db, "passengers"), snap => {
 function alertDriver(p, far) {
   const box = $("alert");
   box.textContent = `🙋 Yangi yoʻlovchi${far}`;
+  box.className = "alert";
   box.hidden = false;
   box.onclick = () => { box.hidden = true; map.setView([p.lat, p.lng], 16); };
   setTimeout(() => box.hidden = true, 15000);
@@ -233,6 +253,8 @@ function onPosition(pos) {
     if (key !== me.from && distance(here, PITAKS[key].at) < 150) return arrive(key);
   }
 
+  autoPickUp(here, pos.coords.speed);
+
   // Har 10 soniyada bir marta yuboramiz (internet va Firebase'ni tejash uchun)
   if (Date.now() - lastSent < 10000) return;
   if (!lastSent) map.setView(here, 14);          // birinchi marta o'zimizga yaqinlashamiz
@@ -248,6 +270,39 @@ async function keepScreenOn() {
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && watchId !== null) keepScreenOn();
 });
+
+// ===== Avtomatik olish =====
+// Damas yo'lovchidan 40 m ichida 12 soniya tursa (yoki deyarli to'xtab 5 soniya tursa),
+// yo'lovchi olindi deb hisoblanadi: +1 va yo'lovchi xaritadan o'chadi.
+const nearSince = {};      // yo'lovchi id → qachondan beri yaqinda turibmiz
+const picked = new Set();  // bir yo'lovchini ikki marta sanamaslik uchun
+
+function autoPickUp(here, speed) {
+  for (const [id, p] of Object.entries(passengers)) {
+    if (picked.has(id) || distance(here, [p.lat, p.lng]) > 40) { delete nearSince[id]; continue; }
+    nearSince[id] ??= Date.now();
+    const waited = Date.now() - nearSince[id];
+    const stopped = speed != null && speed < 1.5;              // 1.5 m/s ≈ 5 km/soat
+    if (waited > 12000 || (stopped && waited > 5000)) pickUp(id);
+  }
+}
+
+function pickUp(id) {
+  if (!me || me.people >= CAP) return;
+  picked.add(id); delete nearSince[id];
+  remove(ref(db, "passengers/" + id));
+  save({ people: me.people + 1 });
+  showBox(`✅ Yoʻlovchi qoʻshildi: ${me.people + 1}/${CAP}`, "ok");
+}
+
+function showBox(text, kind) {
+  const box = $("alert");
+  box.textContent = text;
+  box.className = "alert" + (kind ? " " + kind : "");
+  box.hidden = false;
+  box.onclick = () => box.hidden = true;
+  setTimeout(() => box.hidden = true, 6000);
+}
 
 // Ikki nuqta orasidagi masofa (metr), Haversine formulasi
 function distance([lat1, lng1], [lat2, lng2]) {

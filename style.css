@@ -14,7 +14,7 @@ body { background: var(--bg); color: var(--fg); display: flex; flex-direction: c
 header { background: var(--panel); padding: 10px 14px; padding-top: max(10px, env(safe-area-inset-top));
          display: flex; flex-wrap: wrap; gap: 8px; align-items: center; z-index: 1000; }
 header h1 { font-size: 17px; margin: 0; flex: 1 1 auto; }
-.stats { display: flex; flex-wrap: wrap; gap: 12px; color: var(--muted); width: 100%; font-variant-numeric: tabular-nums; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
 .stats b { color: var(--fg); }
 
 button { font: inherit; border: 0; border-radius: 10px; padding: 9px 12px; cursor: pointer;
@@ -31,7 +31,8 @@ button.danger { background: var(--late); color: #fff; }
       display: flex; flex-direction: column; justify-content: center; gap: 6px;
       border-top: 2px solid #f2c94c; color: var(--fg); }
 .e-row { display: flex; gap: 12px; align-items: center; min-height: 0; }
-.e-cta { align-self: center; font-size: 12px; color: var(--muted); text-decoration: underline; }
+.e-cta { align-self: stretch; text-align: center; font-size: 13px; font-weight: 700; text-decoration: none;
+         background: #f2994a; color: #fff; padding: 7px 10px; border-radius: 10px; }
 .e-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .e-text small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
 .e-text b { font-size: 16px; line-height: 1.25; }
@@ -48,6 +49,11 @@ button.danger { background: var(--late); color: #fff; }
          font-weight: 700; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .damas.full { background: var(--late); }
 .damas.stale { background: #9aa3a0; }
+.van-phone { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px;
+             background: var(--panel); color: var(--fg); font-size: 11px; font-weight: 700; white-space: nowrap;
+             padding: 1px 6px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.35); cursor: copy; }
+.toast { position: fixed; left: 50%; bottom: calc(24vh + env(safe-area-inset-bottom)); transform: translateX(-50%);
+         z-index: 3000; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; }
 .van.me img { filter: drop-shadow(0 0 4px #1a4fd6) drop-shadow(0 0 4px #1a4fd6); }
 .van.old img { opacity: .5; filter: grayscale(1); }
 /* Pitak belgisi: yo'l belgisidek "213 PITAK" */
@@ -75,5 +81,6 @@ button.danger { background: var(--late); color: #fff; }
          background: var(--late); color: #fff; font-size: 22px; font-weight: 700; text-align: center;
          padding: 18px; border-radius: 14px; cursor: pointer; animation: blink .5s 12 alternate; }
 @keyframes blink { to { background: #8f1d14; } }
+.alert.ok { background: var(--accent); animation: none; }
 @media (prefers-reduced-motion: reduce) { .alert { animation: none; } }
 .sound-hint { background: var(--ad); text-align: center; padding: 8px; font-size: 13px; }
