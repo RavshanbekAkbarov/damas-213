@@ -89,7 +89,7 @@
         <label>Boshlanishi <input id="start" type="date" required></label>
         <label>Tugashi <input id="end" type="date" required></label>
       </div>
-      <label id="imageLabel"><span id="imageHint">Rasm yoki logo (ixtiyoriy)</span> <input id="image" type="file" accept="image/*"></label>
+      <label id="imageLabel"><span id="imageHint">Fon rasmi (ixtiyoriy)</span> <input id="image" type="file" accept="image/*"></label>
       <label id="videoLabel" hidden>YouTube havolasi (Shorts ham boʻladi)
         <input id="video" placeholder="https://youtube.com/shorts/...">
       </label>
@@ -260,7 +260,7 @@ $("kind").onchange = () => {
   $("imageLabel").hidden = kind === "video";
   $("imageHint").textContent = kind === "image"
     ? "Banner rasm (majburiy, eni boʻyidan ~3 marta katta boʻlsa yaxshi: masalan 1200×400)"
-    : "Rasm yoki logo (ixtiyoriy)";
+    : "Fon rasmi (ixtiyoriy): butun reklama joyini egallaydi, matn ustida chiqadi";
   showPreview();
 };
 
@@ -271,7 +271,7 @@ $("image").onchange = () => {
   if (!file) return;
   const img = new Image();
   img.onload = () => {
-    const max = $("kind").value === "image" ? 720 : 300;
+    const max = 720;   // fon va banner butun kenglikni egallaydi
     const scale = Math.min(1, max / Math.max(img.width, img.height));
     const c = document.createElement("canvas");
     c.width = img.width * scale; c.height = img.height * scale;

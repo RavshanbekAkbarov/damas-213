@@ -29,23 +29,27 @@ button.danger { background: var(--late); color: #fff; }
 #elon, #elonPreview, .e-card { min-height: max(18vh, 110px); flex: none; box-sizing: border-box; background: var(--ad);
       padding: 10px 14px; padding-bottom: max(8px, env(safe-area-inset-bottom));
       display: flex; flex-direction: column; justify-content: center; gap: 6px;
-      border-top: 2px solid #f2c94c; color: var(--fg); position: relative; }
+      border-top: 2px solid #f2c94c; color: var(--fg); position: relative; isolation: isolate; overflow: hidden; }
 .e-row { display: flex; gap: 12px; align-items: center; min-height: 0; }
 .e-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .e-small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
 .e-text b { font-size: 18px; line-height: 1.25; }
 .e-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
 .e-foot span { font-size: 14px; color: var(--muted); min-width: 0; }
-.e-img { flex: none; width: 72px; height: 72px; object-fit: cover; border-radius: 10px; }
+/* Fon rasmi: butun reklama joyini egallaydi, matn o'qilishi uchun qoraytiriladi */
+.e-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; }
+.e-shade { position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(0,0,0,.72), rgba(0,0,0,.2)); }
+.e-on-img b, .e-on-img .e-foot span { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.e-on-img .e-small { color: rgba(255,255,255,.8); }
 /* Kichik tugma; ::after butun reklamani bosiladigan qiladi */
 .e-btn { flex: none; background: #229ED9; color: #fff; text-decoration: none; font-weight: 700;
          font-size: 12px; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
 .e-btn::after { content: ""; position: absolute; inset: 0; }
 /* Faqat rasm turi */
-.e-banner { width: 100%; height: max(18vh, 110px); object-fit: cover; border-radius: 10px; display: block; }
-.e-label { position: absolute; top: 14px; left: 18px; background: rgba(0,0,0,.55); color: #fff;
+.e-banner { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+.e-label { position: absolute; top: 10px; left: 12px; background: rgba(0,0,0,.55); color: #fff;
            font-size: 10px; padding: 1px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: .06em; }
-.e-chip { position: absolute; right: 22px; bottom: max(14px, env(safe-area-inset-bottom)); background: #229ED9; color: #fff;
+.e-chip { position: absolute; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); background: #229ED9; color: #fff;
           font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
 .e-cover { position: absolute; inset: 0; padding: 0; background: none; }
 /* Video turi: 16:9, reklama balandligida */

@@ -60,10 +60,12 @@ export function adHtml(ad, opts = {}) {
         ? `<img class="e-video" src="https://i.ytimg.com/vi/${vid}/mqdefault.jpg" alt="">`
         : `<iframe class="e-video" src="https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&loop=1&playlist=${vid}&controls=0&playsinline=1&rel=0"
              allow="autoplay; encrypted-media" title="${esc(ad.title)}"></iframe>`)
-    : ad.image ? `<img class="e-img" src="${esc(ad.image)}" alt="">` : "";
+    : "";
+  // Matnli reklamada rasm bo'lsa: butun joyni fon sifatida egallaydi, matn ustida oq rangda
+  const bg = !vid && ad.image ? `<img class="e-bg" src="${esc(ad.image)}" alt=""><div class="e-shade"></div>` : "";
 
-  return `
-    <div class="e-row">
+  return `${bg}
+    <div class="e-row${bg ? " e-on-img" : ""}">
       ${media}
       <div class="e-text">
         <small class="e-small">${ad.isDefault ? "Reklama joyi" : "Reklama"}</small>
