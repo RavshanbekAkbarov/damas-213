@@ -7,7 +7,7 @@ const VAN = `<img src="damas-marker.png" alt="Damas">`;
 const icon = (html, anchor = [20, 12]) => L.divIcon({ className: "", html, iconAnchor: anchor });
 
 // opts.myPaxId(): yo'lovchining o'z belgisi ("Siz")
-// opts.myDriverId: haydovchining o'z Damasi
+// opts.myDriverId(): haydovchining o'z Damasi
 // opts.onUpdate(drivers, passengers, stats): har yangilanishda chaqiriladi
 export function liveMap(elementId, opts = {}) {
   const map = L.map(elementId).fitBounds([PITAKS.qishloq.at, PITAKS.fargona.at], { padding: [40, 40] });
@@ -45,7 +45,7 @@ export function liveMap(elementId, opts = {}) {
     sync(roadMarkers, road, (id, d) => {
       const stale = now - (d.updatedAt || 0) > 5 * 60000;
       const cls = stale ? "stale" : d.people >= CAP ? "full" : "";
-      const me = id === opts.myDriverId ? " me" : "";
+      const me = opts.myDriverId && id === opts.myDriverId() ? " me" : "";
       const html = `<div class="van${stale ? " old" : ""}${me}">${VAN}<span class="damas ${cls}">${d.people}/${CAP}</span></div>`;
       const ago = Math.round((now - (d.updatedAt || 0)) / 60000);
       const popup = `<b>${d.name}</b><br>📞 <span style="user-select:all">${d.phone}</span><br>Boʻsh joy: ${CAP - d.people}` +

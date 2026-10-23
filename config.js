@@ -1,6 +1,7 @@
 // Umumiy sozlamalar: ikkala sahifa (yo'lovchi va haydovchi) shu faylni ishlatadi
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAM6SDtTK3vlD-d6Fyhj8maP9DXkhqXhVY",
@@ -12,7 +13,12 @@ const firebaseConfig = {
   appId: "1:312315539032:web:3b2ffb911b2e37df13e42d"
 };
 
-export const db = getDatabase(initializeApp(firebaseConfig));
+const app = initializeApp(firebaseConfig);
+export const db = getDatabase(app);
+export const auth = getAuth(app);
+
+// Haydovchi logini: "akmal" → "akmal@213damas.uz" (haqiqiy pochta shart emas)
+export const loginToEmail = login => login.trim().toLowerCase() + "@213damas.uz";
 
 export const CAP = 7; // Damasdagi o'rinlar
 

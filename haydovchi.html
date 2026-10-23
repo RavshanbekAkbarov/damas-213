@@ -25,12 +25,23 @@
 <body>
 
 <header><h1>🚐 213 Damas: Haydovchi</h1></header>
+<div id="alert" class="alert" hidden></div>
+<div id="soundHint" class="sound-hint">🔔 Ovozli signal uchun ekranga bir marta teging</div>
 <div id="map"></div>
 
 <main>
-  <!-- Birinchi marta: ro'yxatdan o'tish -->
-  <form id="regForm" class="card" hidden>
-    <b>Roʻyxatdan oʻtish</b>
+  <!-- Kirish: login va parolni Ravshanbek beradi -->
+  <form id="loginForm" class="card" hidden>
+    <b>Haydovchi sifatida kirish</b>
+    <input id="login" placeholder="Login (masalan: akmal)" autocomplete="username" required>
+    <input id="password" type="password" placeholder="Parol" autocomplete="current-password" required>
+    <small id="loginError" style="color:var(--late)"></small>
+    <button class="main">Kirish</button>
+  </form>
+
+  <!-- Birinchi kirishda: ism va telefon -->
+  <form id="profileForm" class="card" hidden>
+    <b>Maʼlumotlaringiz (yoʻlovchilar koʻradi)</b>
     <input id="name" placeholder="Ismingiz" required>
     <input id="phone" placeholder="+998 90 123 45 67" required>
     <button class="main">Saqlash</button>
@@ -55,46 +66,63 @@
       <button id="atQishloq">🅿️ Qishloq pitakka keldim</button>
       <button id="atFargona">🅿️ Fargʻona pitakka keldim</button>
     </div>
+    <button id="logout">Chiqish</button>
   </section>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
-import { ref, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { db, CAP, PITAKS, queueAt } from "./config.js";
+import { ref, onValue, onChildAdded, set, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { db, auth, loginToEmail, CAP, PITAKS, queueAt } from "./config.js";
 import { liveMap } from "./map.js";
 import { setupInstall } from "./install.js";
 
 const $ = id => document.getElementById(id);
-let myId = null;
-try { myId = localStorage.getItem("myDriver"); } catch (e) {}
-let me = null, drivers = {};
+let myId = null, me = null, drivers = {}, started = false;
 
 // Xarita: haydovchi ham kutayotgan yo'lovchilarni ko'radi
-const map = liveMap("map", { myDriverId: myId });
+const map = liveMap("map", { myDriverId: () => myId });
 setupInstall({ title: "Haydovchi ilovasini oʻrnating", storageKey: "installSeenDriver" });
 
-// ===== Ro'yxatdan o'tish =====
-if (!myId) $("regForm").hidden = false; else start();
+// ===== Kirish =====
+onAuthStateChanged(auth, user => {
+  const isDriver = user && !user.isAnonymous;
+  $("loginForm").hidden = isDriver;
+  if (!isDriver) { $("panel").hidden = $("profileForm").hidden = true; return; }
+  myId = user.uid;
+  start();
+});
 
-$("regForm").onsubmit = e => {
+$("loginForm").onsubmit = async e => {
   e.preventDefault();
-  const newRef = push(ref(db, "drivers"), {
+  $("loginError").textContent = "";
+  try {
+    await signInWithEmailAndPassword(auth, loginToEmail($("login").value), $("password").value);
+  } catch (err) {
+    $("loginError").textContent = "Login yoki parol notoʻgʻri. Qayta urinib koʻring.";
+  }
+};
+
+$("profileForm").onsubmit = e => {
+  e.preventDefault();
+  set(ref(db, "drivers/" + myId), {
     name: $("name").value.trim(), phone: $("phone").value.trim(),
     people: 0, status: "pitak", pitak: "qishloq", queuedAt: Date.now()
   });
-  myId = newRef.key;
-  try { localStorage.setItem("myDriver", myId); } catch (e) {}
-  $("regForm").hidden = true;
-  start();
 };
+
+$("logout").onclick = () => { stopGps(); signOut(auth); };
 
 // ===== Jonli holat =====
 function start() {
-  $("panel").hidden = false;
+  if (started) return;
+  started = true;
   onValue(ref(db, "drivers"), snap => {
     drivers = snap.val() || {};
     me = drivers[myId];
+    $("profileForm").hidden = !!me;      // birinchi kirishda ism-telefon so'raymiz
+    $("panel").hidden = !me;
     if (me) render();
   });
 }
@@ -124,6 +152,57 @@ $("goRoad").onclick = () => { if (me.status !== "road") save({ status: "road", f
 const arrive = key => save({ status: "pitak", pitak: key, queuedAt: Date.now(), people: 0 });
 $("atQishloq").onclick = () => arrive("qishloq");
 $("atFargona").onclick = () => arrive("fargona");
+
+// ===== Yangi yo'lovchi: baland signal =====
+let audio = null;
+// Brauzer ovozni faqat foydalanuvchi ekranga tekkandan keyin ruxsat beradi
+document.addEventListener("click", () => {
+  if (!audio) audio = new AudioContext();
+  audio.resume();
+  $("soundHint").hidden = true;
+});
+
+onChildAdded(ref(db, "passengers"), snap => {
+  const p = snap.val();
+  if (!me || Date.now() - p.since > 2 * 60000) return;   // eski yo'lovchilar uchun signal yo'q
+
+  // Kimga signal: yo'ldagi haydovchiga (8 km ichida) va pitakda navbati kelganga
+  const firstInQueue = me.status === "pitak" && queueAt(drivers, me.pitak)[0]?.[0] === myId;
+  const onRoad = me.status === "road";
+  if (!firstInQueue && !onRoad) return;
+
+  let far = "";
+  if (me.lat) {
+    const km = distance([me.lat, me.lng], [p.lat, p.lng]) / 1000;
+    if (onRoad && km > 8) return;
+    far = ` · ${km.toFixed(1)} km`;
+  }
+  alertDriver(p, far);
+});
+
+function alertDriver(p, far) {
+  const box = $("alert");
+  box.textContent = `🙋 Yangi yoʻlovchi${far}`;
+  box.hidden = false;
+  box.onclick = () => { box.hidden = true; map.setView([p.lat, p.lng], 16); };
+  setTimeout(() => box.hidden = true, 15000);
+  beep();
+  navigator.vibrate?.([400, 200, 400, 200, 400]);
+}
+
+// 3 marta baland "bip-bip" (kvadrat to'lqin oddiy ovozdan balandroq eshitiladi)
+function beep() {
+  if (!audio) return;
+  const t = audio.currentTime;
+  for (let i = 0; i < 6; i++) {
+    const osc = audio.createOscillator(), gain = audio.createGain();
+    osc.type = "square";
+    osc.frequency.value = i % 2 ? 1320 : 880;
+    gain.gain.value = 0.8;
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t + i * 0.25); osc.stop(t + i * 0.25 + 0.2);
+  }
+}
 
 // ===== GPS (faqat yo'lda) =====
 let watchId = null, lastSent = 0, wakeLock = null;
