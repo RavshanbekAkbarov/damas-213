@@ -24,7 +24,7 @@
 </head>
 <body>
 
-<header><h1>🚐 213 Damas: Haydovchi</h1></header>
+<header><h1>🚐 213 Damas: Haydovchi</h1><button id="btnInstall" hidden>📲 Oʻrnatish</button></header>
 <div id="alert" class="alert" hidden></div>
 <div id="soundHint" class="sound-hint">🔔 Ovozli signal uchun ekranga bir marta teging</div>
 <div id="map"></div>
@@ -84,7 +84,7 @@ let myId = null, me = null, drivers = {}, started = false;
 
 // Xarita: haydovchi ham kutayotgan yo'lovchilarni ko'radi
 const map = liveMap("map", { myDriverId: () => myId });
-setupInstall({ title: "Haydovchi ilovasini oʻrnating", storageKey: "installSeenDriver" });
+setupInstall({ title: "Haydovchi ilovasini oʻrnating", buttonId: "btnInstall", storageKey: "installSeenDriver" });
 
 // ===== Kirish =====
 onAuthStateChanged(auth, user => {

@@ -14,6 +14,7 @@
 
 <header>
   <h1>🚐 213 Damas</h1>
+  <button id="btnInstall" hidden>📲 Oʻrnatish</button>
   <button id="btnGo" class="main">🙋 Men ketaman</button>
   <div class="stats">
     <span>Kutmoqda: <b id="sWait">0</b></span>
@@ -94,7 +95,7 @@ async function addMe(lat, lng) {
 map.on("click", e => { if (picking) addMe(e.latlng.lat, e.latlng.lng); });
 
 // ===== O'rnatish oynasi =====
-setupInstall({ title: "213 Damasni telefoningizga oʻrnating", videoId: "" }); // videoId: YouTube havolasidagi v= dan keyingi qism
+setupInstall({ title: "213 Damasni telefoningizga oʻrnating", buttonId: "btnInstall", videoId: "" }); // videoId: YouTube havolasidagi v= dan keyingi qism
 
 // ===== Reklama (admin paneldan keladi) =====
 let ads = DEFAULT_ADS, adIndex = 0;

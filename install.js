@@ -1,56 +1,72 @@
-// Birinchi kirganda "ilovani o'rnating" oynasi. Ikkala sahifa ham ishlatadi.
-// title: oyna sarlavhasi, videoId: YouTube video ID (bo'sh bo'lsa tugma chiqmaydi)
-export function setupInstall({ title, videoId = "", storageKey = "installSeen" }) {
-  const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-  let seen = false;
-  try { seen = localStorage.getItem(storageKey) === "1"; } catch (e) {}
+// "Ilovani o'rnating" oynasi va doimiy o'rnatish tugmasi. Ikkala sahifa ham ishlatadi.
+// title: oyna sarlavhasi, buttonId: sahifadagi o'rnatish tugmasi, videoId: YouTube video (ixtiyoriy)
+const REMIND_AFTER = 3 * 24 * 3600 * 1000;   // "Keyinroq" bosilsa, 3 kundan keyin yana chiqadi
 
+export function setupInstall({ title, buttonId, videoId = "", storageKey = "installSeen" }) {
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
-  if (installed || seen) return;
 
-  document.body.insertAdjacentHTML("beforeend", `
-    <div id="install" class="install">
-      <div class="install-box">
-        <b style="font-size:18px">📲 ${title}</b>
-        <span>Keyin har safar bosh ekrandan ilova kabi ochasiz.</span>
-        <button id="installBtn" class="main" hidden>📲 Oʻrnatish</button>
-        <ol id="iosSteps" hidden>
-          <li>Pastdagi <b>⬆️ Ulashish</b> tugmasini bosing</li>
-          <li><b>«Bosh ekranga»</b> (Add to Home Screen) ni tanlang</li>
-        </ol>
-        <span id="otherSteps" hidden>Chrome menyusi <b>⋮</b> → <b>«Bosh ekranga qoʻshish»</b></span>
-        <button id="videoBtn" ${videoId ? "" : "hidden"}>▶️ Videoda koʻrish</button>
-        <div id="video"></div>
-        <button id="laterBtn">Keyinroq</button>
-      </div>
-    </div>`);
+  const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  if (installed) return;                       // allaqachon ilova sifatida ochilgan
 
-  const $ = id => document.getElementById(id);
-  if (/iphone|ipad/i.test(navigator.userAgent)) $("iosSteps").hidden = false;
-  else $("otherSteps").hidden = false;
-
-  // Android Chrome: bitta tugma bilan o'rnatish
+  // Android Chrome: brauzer o'rnatishga tayyor bo'lganda shu hodisani beradi
   let installEvent = null;
   addEventListener("beforeinstallprompt", e => {
     e.preventDefault(); installEvent = e;
-    $("installBtn").hidden = false; $("otherSteps").hidden = true;
+    const btn = document.getElementById("installBtn");
+    if (btn) { btn.hidden = false; document.getElementById("otherSteps").hidden = true; }
   });
-  $("installBtn").onclick = async () => {
-    if (!installEvent) return;
-    installEvent.prompt();
-    await installEvent.userChoice;
-    close();
-  };
+  addEventListener("appinstalled", () => { remember(Infinity); close(); headerBtn && (headerBtn.hidden = true); });
 
-  $("videoBtn").onclick = () => {
-    $("video").innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1"
-      allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
-    $("videoBtn").hidden = true;
-  };
+  // Doimiy tugma
+  const headerBtn = buttonId && document.getElementById(buttonId);
+  if (headerBtn) { headerBtn.hidden = false; headerBtn.onclick = open; }
 
-  $("laterBtn").onclick = close;
-  function close() {
-    $("install").remove();
-    try { localStorage.setItem(storageKey, "1"); } catch (e) {}
+  // Avtomatik ko'rsatish: hech qachon yopilmagan yoki 3 kun o'tgan bo'lsa
+  let hideUntil = 0;
+  try { hideUntil = +localStorage.getItem(storageKey) || 0; } catch (e) {}
+  if (Date.now() > hideUntil) open();
+
+  function remember(ms) {
+    try { localStorage.setItem(storageKey, ms === Infinity ? "9e15" : String(Date.now() + ms)); } catch (e) {}
   }
+
+  function open() {
+    if (document.getElementById("install")) return;
+    document.body.insertAdjacentHTML("beforeend", `
+      <div id="install" class="install">
+        <div class="install-box">
+          <b style="font-size:18px">📲 ${title}</b>
+          <span>Keyin har safar bosh ekrandan ilova kabi ochasiz.</span>
+          <button id="installBtn" class="main" ${installEvent ? "" : "hidden"}>📲 Oʻrnatish</button>
+          <ol id="iosSteps" hidden>
+            <li>Pastdagi <b>⬆️ Ulashish</b> tugmasini bosing</li>
+            <li><b>«Bosh ekranga»</b> (Add to Home Screen) ni tanlang</li>
+          </ol>
+          <span id="otherSteps" ${installEvent ? "hidden" : ""}>Brauzer menyusi <b>⋮</b> → <b>«Bosh ekranga qoʻshish»</b> yoki <b>«Ilovani oʻrnatish»</b></span>
+          <button id="videoBtn" ${videoId ? "" : "hidden"}>▶️ Videoda koʻrish</button>
+          <div id="video"></div>
+          <button id="laterBtn">Keyinroq</button>
+        </div>
+      </div>`);
+
+    const $ = id => document.getElementById(id);
+    if (/iphone|ipad/i.test(navigator.userAgent)) { $("iosSteps").hidden = false; $("otherSteps").hidden = true; }
+
+    $("installBtn").onclick = async () => {
+      if (!installEvent) return;
+      installEvent.prompt();
+      const { outcome } = await installEvent.userChoice;
+      installEvent = null;
+      if (outcome === "accepted") remember(Infinity);
+      close();
+    };
+    $("videoBtn").onclick = () => {
+      $("video").innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1"
+        allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+      $("videoBtn").hidden = true;
+    };
+    $("laterBtn").onclick = () => { remember(REMIND_AFTER); close(); };
+  }
+
+  function close() { document.getElementById("install")?.remove(); }
 }
