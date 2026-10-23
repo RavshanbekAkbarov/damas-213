@@ -104,7 +104,7 @@ import { dayKey } from "./stats.js";
 
 const $ = id => document.getElementById(id);
 const MONTHS = ["yan", "fev", "mar", "apr", "may", "iyun", "iyul", "avg", "sen", "okt", "noy", "dek"];
-const nice = key => { const [, m, d] = key.split("-"); return `${+d} ${MONTHS[m - 1]}`; };
+const nice = key => { const [, m, d] = String(key).split("-"); return d ? `${+d} ${MONTHS[m - 1]}` : String(key); };
 const addDays = (n, from = new Date()) => { const d = new Date(from); d.setDate(d.getDate() + n); return dayKey(d); };
 
 let ads = {}, views = {}, clicks = {}, editingId = null, imageData = "";
@@ -185,6 +185,17 @@ function renderList() {
     : "Faol reklama yoʻq: yoʻlovchilarga «Reklama joylash uchun yozing» chiqadi."}</small>`;
 
   items.forEach(ad => {
+    try { renderRow(ad, today); }
+    catch (err) {                                   // bitta reklama buzuq bo'lsa ham qolganlari chiqadi
+      console.error("Reklama", ad.id, err);
+      $("list").insertAdjacentHTML("beforeend",
+        `<small style="color:var(--late)">⚠️ «${ad.id}» reklamasini koʻrsatib boʻlmadi: ${err.message}</small>`);
+    }
+  });
+}
+
+function renderRow(ad, today) {
+  {
     const daysLeft = Math.round((new Date(ad.end) - new Date(today)) / 864e5);
     const when = ad.start && ad.end ? `${nice(ad.start)} – ${nice(ad.end)}` : "Muddatsiz";
     const left = ad.status === "running" && ad.end ? ` · ${daysLeft === 0 ? "bugun oxirgi kun" : daysLeft + " kun qoldi"}` : "";
@@ -211,7 +222,7 @@ function renderList() {
       setTimeout(() => { delete del.dataset.sure; del.textContent = "🗑"; }, 3000);
     };
     $("list").append(row);
-  });
+  }
 }
 
 // ===== Forma =====
