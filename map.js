@@ -34,7 +34,8 @@ export function liveMap(elementId, opts = {}) {
     for (const key in PITAKS) {
       const q = queueAt(drivers, key);
       pitakCount += q.length;
-      pitakMarkers[key].setIcon(icon(`<div class="pitak">🅿️ ${q.length}</div>`));
+      pitakMarkers[key].setIcon(icon(
+        `<div class="pitak"><b>213</b><small>PITAK</small><span class="pitak-count">${q.length}</span></div>`, [26, 30]));
       const list = q.map(([, d], i) =>
         `${i + 1}. <b>${d.name}</b> ${d.people}/${CAP} · <span style="user-select:all">${d.phone}</span>`).join("<br>");
       pitakMarkers[key].setPopupContent(`<b>${PITAKS[key].name}</b><br>${list || "Hozir Damas yoʻq"}`);

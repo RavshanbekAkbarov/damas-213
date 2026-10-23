@@ -37,11 +37,14 @@ export function adStatus(ad, today) {
 export function adHtml(ad) {
   const safeLink = /^(https?:|tel:)/.test(ad.link || "") ? ad.link : "#";
   return `
-    ${ad.image ? `<img class="ad-img" src="${esc(ad.image)}" alt="">` : ""}
-    <div class="ad-text">
-      <small>${ad.isDefault ? "Reklama joyi" : "Reklama"}</small>
-      <b>${esc(ad.title)}</b>
-      ${ad.sub ? `<span>${esc(ad.sub)}</span>` : ""}
+    <div class="ad-row">
+      ${ad.image ? `<img class="ad-img" src="${esc(ad.image)}" alt="">` : ""}
+      <div class="ad-text">
+        <small>${ad.isDefault ? "Reklama joyi" : "Reklama"}</small>
+        <b>${esc(ad.title)}</b>
+        ${ad.sub ? `<span>${esc(ad.sub)}</span>` : ""}
+      </div>
+      <a class="ad-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")}</a>
     </div>
-    <a class="ad-btn" data-id="${esc(ad.id || "")}" href="${esc(safeLink)}" target="_blank" rel="noopener">${esc(ad.btnText || "Batafsil")}</a>`;
+    ${ad.isDefault ? "" : `<a class="ad-cta" href="${TELEGRAM}" target="_blank" rel="noopener">📢 Reklama joylash uchun bosing</a>`}`;
 }

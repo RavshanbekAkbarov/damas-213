@@ -187,7 +187,7 @@ function renderList() {
   items.forEach(ad => {
     const daysLeft = Math.round((new Date(ad.end) - new Date(today)) / 864e5);
     const when = ad.start && ad.end ? `${nice(ad.start)} – ${nice(ad.end)}` : "Muddatsiz";
-    const left = ad.status === "running" ? ` · ${daysLeft === 0 ? "bugun oxirgi kun" : daysLeft + " kun qoldi"}` : "";
+    const left = ad.status === "running" && ad.end ? ` · ${daysLeft === 0 ? "bugun oxirgi kun" : daysLeft + " kun qoldi"}` : "";
     const row = document.createElement("div");
     row.className = "ad-item";
     row.innerHTML = `
