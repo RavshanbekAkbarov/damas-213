@@ -25,7 +25,7 @@
 
 <div id="map" style="flex:1"></div>
 <div id="hint" hidden>Turgan joyingizni xaritada bosing</div>
-<div id="ad"></div>
+<div id="elon"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module">
@@ -34,7 +34,7 @@ import { signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/fi
 import { db, auth } from "./config.js";
 import { liveMap } from "./map.js";
 import { setupInstall } from "./install.js";
-import { adHtml, adStatus, DEFAULT_ADS } from "./ads.js";
+import { adHtml, adStatus, DEFAULT_ADS } from "./elon.js";
 import { trackUser, dayKey, countAdView, countAdClick } from "./stats.js";
 
 const $ = id => document.getElementById(id);
@@ -108,11 +108,11 @@ onValue(ref(db, "ads"), snap => {
 });
 function showAd() {
   const ad = ads[adIndex++ % ads.length];
-  $("ad").innerHTML = adHtml(ad);
+  $("elon").innerHTML = adHtml(ad);
   countAdView(ad.id);
 }
-$("ad").addEventListener("click", e => {
-  const btn = e.target.closest(".ad-btn");
+$("elon").addEventListener("click", e => {
+  const btn = e.target.closest(".e-btn");
   if (btn) countAdClick(btn.dataset.id);
 });
 showAd(); setInterval(showAd, 8000);

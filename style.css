@@ -26,18 +26,18 @@ button.danger { background: var(--late); color: #fff; }
         background: var(--fg); color: var(--bg); padding: 8px 12px; border-radius: 8px; }
 
 /* Reklama joyi: ekranning ~18% qismi */
-#ad, #preview, .ad-banner { min-height: max(18vh, 110px); flex: none; box-sizing: border-box; background: var(--ad);
+#elon, #elonPreview, .e-card { min-height: max(18vh, 110px); flex: none; box-sizing: border-box; background: var(--ad);
       padding: 10px 14px; padding-bottom: max(8px, env(safe-area-inset-bottom));
       display: flex; flex-direction: column; justify-content: center; gap: 6px;
       border-top: 2px solid #f2c94c; color: var(--fg); }
-.ad-row { display: flex; gap: 12px; align-items: center; min-height: 0; }
-.ad-cta { align-self: center; font-size: 12px; color: var(--muted); text-decoration: underline; }
-.ad-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.ad-text small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
-.ad-text b { font-size: 16px; line-height: 1.25; }
-.ad-text span { font-size: 13px; color: var(--muted); }
-.ad-img { flex: none; height: 64px; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
-.ad-btn { flex: none; background: #229ED9; color: #fff; text-decoration: none; font-weight: 700;
+.e-row { display: flex; gap: 12px; align-items: center; min-height: 0; }
+.e-cta { align-self: center; font-size: 12px; color: var(--muted); text-decoration: underline; }
+.e-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.e-text small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.e-text b { font-size: 16px; line-height: 1.25; }
+.e-text span { font-size: 13px; color: var(--muted); }
+.e-img { flex: none; height: 64px; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+.e-btn { flex: none; background: #229ED9; color: #fff; text-decoration: none; font-weight: 700;
           padding: 12px 14px; border-radius: 12px; white-space: nowrap; }
 
 /* Xarita belgilari */

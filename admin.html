@@ -22,15 +22,15 @@
   .bars { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
   .bar { display: grid; grid-template-columns: 52px 1fr 40px; gap: 8px; align-items: center; }
   .bar i { display: block; height: 10px; background: var(--accent); border-radius: 5px; min-width: 2px; }
-  .ad-item { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--bg); padding-top: 14px; }
-  .ad-item small { color: var(--muted); }
-  .ad-banner { border-radius: 12px; overflow: hidden; }
-  .ad-banner a { pointer-events: none; }   /* admin panelda bannerdagi tugmalar ishlamaydi */
+  .e-item { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--bg); padding-top: 14px; }
+  .e-item small { color: var(--muted); }
+  .e-card { border-radius: 12px; overflow: hidden; }
+  .e-card a { pointer-events: none; }   /* admin panelda bannerdagi tugmalar ishlamaydi */
   .badge { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
   .running { background: #d6f2e2; color: #145c38; }
   .waiting { background: #fff0c2; color: #6b4e00; }
   .ended, .paused { background: #e4e7e5; color: #4a524d; }
-  #preview { border-radius: 12px; overflow: hidden; }
+  #elonPreview { border-radius: 12px; overflow: hidden; }
 </style>
 </head>
 <body>
@@ -88,7 +88,7 @@
         <button type="button" id="cancelEdit" hidden>Bekor qilish</button>
       </div>
       <b>Koʻrinishi:</b>
-      <div id="preview"></div>
+      <div id="elonPreview"></div>
     </form>
 
     <button id="logout">Chiqish</button>
@@ -99,7 +99,7 @@
 import { ref, onValue, push, update, remove, query, orderByKey, startAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { db, auth, loginToEmail } from "./config.js";
-import { adHtml, adStatus, normalizeLink } from "./ads.js";
+import { adHtml, adStatus, normalizeLink } from "./elon.js";
 import { dayKey } from "./stats.js";
 
 const $ = id => document.getElementById(id);
@@ -200,13 +200,13 @@ function renderRow(ad, today) {
     const when = ad.start && ad.end ? `${nice(ad.start)} – ${nice(ad.end)}` : "Muddatsiz";
     const left = ad.status === "running" && ad.end ? ` · ${daysLeft === 0 ? "bugun oxirgi kun" : daysLeft + " kun qoldi"}` : "";
     const row = document.createElement("div");
-    row.className = "ad-item";
+    row.className = "e-item";
     row.innerHTML = `
       <div class="row">
         <span class="badge ${ad.status}">${STATUS[ad.status]}</span>
         <small>📅 ${when}${left}</small>
       </div>
-      <div class="ad-banner">${adHtml(ad)}</div>
+      <div class="e-card">${adHtml(ad)}</div>
       <small>👁 ${sum(views[ad.id])} koʻrish · 👆 ${sum(clicks[ad.id])} bosish</small>
       <div class="row">
         <button data-act="toggle">${ad.active ? "⏸ Toʻxtatish" : "▶️ Yoqish"}</button>
@@ -238,7 +238,7 @@ function formAd() {
   };
 }
 
-function showPreview() { const ad = formAd(); $("preview").innerHTML = adHtml({ ...ad, title: ad.title || "Sarlavha" }); }
+function showPreview() { const ad = formAd(); $("elonPreview").innerHTML = adHtml({ ...ad, title: ad.title || "Sarlavha" }); }
 ["title", "sub", "btnText", "link"].forEach(id => $(id).oninput = showPreview);
 
 // Rasmni kichraytirib (eng ko'pi 300px) saqlaymiz: yo'lovchilar internetini tejash uchun
