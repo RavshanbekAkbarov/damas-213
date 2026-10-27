@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getDatabase } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyAM6SDtTK3vlD-d6Fyhj8maP9DXkhqXhVY",
   authDomain: "damas-213.firebaseapp.com",
   databaseURL: "https://damas-213-default-rtdb.europe-west1.firebasedatabase.app",
