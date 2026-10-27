@@ -78,7 +78,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https:/
 import { db, auth, loginToEmail, CAP, PITAKS, queueAt } from "./config.js";
 import { liveMap, statsHtml } from "./map.js";
 import { setupInstall } from "./install.js";
-import { trackUser } from "./stats.js";
+import { trackUser, countEvent } from "./stats.js";
 
 const $ = id => document.getElementById(id);
 let myId = null, me = null, drivers = {}, started = false;
@@ -164,7 +164,10 @@ function pickUpNearest() {
     const d = distance([me.lat, me.lng], [p.lat, p.lng]);
     if (d < bestDist) { bestDist = d; bestId = id; }
   }
-  if (bestId) remove(ref(db, "passengers/" + bestId));
+  if (bestId) {
+    countEvent("pickup", (Date.now() - passengers[bestId].since) / 60000);
+    remove(ref(db, "passengers/" + bestId));
+  }
 }
 $("minus").onclick = () => me && me.people > 0   && save({ people: me.people - 1 });
 $("goRoad").onclick = () => { if (me.status !== "road") save({ status: "road", from: me.pitak }); };
@@ -300,6 +303,7 @@ function autoPickUp(here, speed) {
 function pickUp(id) {
   if (!me || me.people >= CAP) return;
   picked.add(id); delete nearSince[id];
+  if (passengers[id]) countEvent("pickup", (Date.now() - passengers[id].since) / 60000);
   remove(ref(db, "passengers/" + id));
   save({ people: me.people + 1 });
   showBox(`✅ Yoʻlovchi qoʻshildi: ${me.people + 1}/${CAP}`, "ok");

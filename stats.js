@@ -23,3 +23,14 @@ export function countAdView(adId) {
 export function countAdClick(adId) {
   if (adId) update(ref(db), { [`stats/adClicks/${adId}/${dayKey()}`]: increment(1) });
 }
+
+// Haqiqiy foydalanish hodisalari: "request" (Men ketaman), "pickup" (Damasga mindi), "cancel" (bekor qildi)
+// pickup uchun kutish daqiqalari ham qo'shiladi: o'rtacha kutish = waitMin / pickup
+export function countEvent(type, waitMinutes) {
+  const day = dayKey();
+  const upd = { [`stats/events/${day}/${type}`]: increment(1) };
+  if (type === "request") upd[`stats/hours/${day}/${new Date().getHours()}`] = increment(1);
+  if (type === "pickup" && waitMinutes != null)
+    upd[`stats/events/${day}/waitMin`] = increment(Math.min(40, Math.max(1, Math.round(waitMinutes))));
+  update(ref(db), upd);
+}

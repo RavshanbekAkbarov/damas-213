@@ -31,7 +31,7 @@ import { db, auth } from "./config.js";
 import { liveMap, statsHtml } from "./map.js";
 import { setupInstall } from "./install.js";
 import { adHtml, adStatus, DEFAULT_ADS } from "./elon.js";
-import { trackUser, dayKey, countAdView, countAdClick } from "./stats.js";
+import { trackUser, dayKey, countAdView, countAdClick, countEvent } from "./stats.js";
 
 const $ = id => document.getElementById(id);
 
@@ -86,7 +86,8 @@ function updateButton() {
 
 btn.onclick = () => {
   if (myPaxId() && passengers[myPaxId()]) {        // bekor qilish
-    remove(ref(db, "passengers/" + myPaxId())); setMyId(null); wasWaiting = null; return;
+    remove(ref(db, "passengers/" + myPaxId())); setMyId(null); wasWaiting = null;
+    countEvent("cancel"); return;
   }
   // Avval GPS bilan joyni o'zi aniqlaymiz
   btn.textContent = "📍 Joy aniqlanmoqda…";
@@ -104,6 +105,7 @@ async function addMe(lat, lng) {
   const { user } = await ready;
   const newRef = push(ref(db, "passengers"), { lat, lng, since: Date.now(), uid: user.uid });
   setMyId(newRef.key);
+  countEvent("request");
   picking = false; hint.hidden = true;
 }
 

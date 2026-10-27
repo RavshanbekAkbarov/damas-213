@@ -21,6 +21,9 @@
   .tile b { font-size: 26px; font-variant-numeric: tabular-nums; }
   .bars { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
   .bar { display: grid; grid-template-columns: 52px 1fr 40px; gap: 8px; align-items: center; }
+  .usage { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .usage th, .usage td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--bg); white-space: nowrap; }
+  .usage th:first-child, .usage td:first-child { text-align: left; }
   .bar i { display: block; height: 10px; background: var(--accent); border-radius: 5px; min-width: 2px; }
   .e-item { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--bg); padding-top: 14px; }
   .e-item small { color: var(--muted); }
@@ -58,6 +61,33 @@
       </div>
       <b>Oxirgi 7 kun (kirgan odamlar)</b>
       <div class="bars" id="week"></div>
+    </div>
+
+    <!-- Haqiqiy foydalanish -->
+    <div class="card">
+      <b>Haqiqiy foydalanish (oxirgi 7 kun)</b>
+      <div style="overflow-x:auto">
+        <table class="usage" id="usage"></table>
+      </div>
+      <small style="color:var(--muted)">🙋 «Men ketaman» bosganlar · 🚐 Damasga minganlar · ❌ bekor qilganlar · ⏱ oʻrtacha kutish (daqiqa).
+        🙋 dan 🚐 va ❌ ni ayirsangiz, qolganlar 40 daqiqa kutib, belgisi oʻzi oʻchganlar.</small>
+      <b>Bugun qaysi soatda koʻp soʻrashdi</b>
+      <div class="bars" id="hours"></div>
+    </div>
+
+    <!-- Haydovchilar -->
+    <div class="card">
+      <b>Haydovchilar</b>
+      <div id="driverList"></div>
+      <details>
+        <summary style="cursor:pointer;font-weight:600">➕ Yangi haydovchilar qoʻshish</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+          <small style="color:var(--muted)">Har qatorga bitta haydovchi: <b>login parol</b> (parol kamida 6 belgi). Masalan: <code>olimjon 76j6dsde</code></small>
+          <textarea id="newDrivers" rows="6" style="font:inherit;font-family:monospace;padding:10px;border-radius:10px;border:1px solid var(--muted);background:var(--bg);color:var(--fg)"></textarea>
+          <button type="button" id="addDrivers" class="main">Hammasini qoʻshish</button>
+          <div id="addLog" style="font-size:13px;display:flex;flex-direction:column;gap:2px"></div>
+        </div>
+      </details>
     </div>
 
     <!-- Reklamalar -->
@@ -108,7 +138,9 @@
 <script type="module">
 import { ref, onValue, push, update, remove, query, orderByKey, startAt } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { db, auth, loginToEmail } from "./config.js";
+import { db, auth, loginToEmail, firebaseConfig } from "./config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { adHtml, adStatus, normalizeLink, youtubeId } from "./elon.js";
 import { dayKey } from "./stats.js";
 
@@ -149,6 +181,18 @@ function listen() {
     $("tOnlineSplit").textContent = `${all.length - drivers} yoʻlovchi, ${drivers} haydovchi`;
   });
 
+  onValue(query(ref(db, "stats/events"), orderByKey(), startAt(addDays(-6))), snap => {
+    events = snap.val() || {}; renderUsage();
+  });
+  onValue(ref(db, "stats/hours/" + dayKey()), snap => {
+    const hours = snap.val() || {};
+    const rows = Object.entries(hours).map(([h, n]) => [+h, n]).sort((a, b) => a[0] - b[0]);
+    const max = Math.max(1, ...rows.map(r => r[1]));
+    $("hours").innerHTML = rows.length
+      ? rows.map(([h, n]) => `<div class="bar"><span>${String(h).padStart(2, "0")}:00</span><i style="width:${n / max * 100}%"></i><span>${n}</span></div>`).join("")
+      : `<small style="color:var(--muted)">Bugun hali hech kim soʻramadi</small>`;
+  });
+
   // Faqat oxirgi 7 kun yuklanadi
   onValue(query(ref(db, "stats/daily"), orderByKey(), startAt(addDays(-6))), snap => {
     const days = snap.val() || {};
@@ -158,6 +202,7 @@ function listen() {
     });
     const max = Math.max(1, ...counts.map(c => c[1]));
     $("tToday").textContent = counts[6][1];
+    visitors = Object.fromEntries(counts); renderUsage();
     $("week").innerHTML = counts.map(([key, n]) =>
       `<div class="bar"><span>${nice(key)}</span><i style="width:${n / max * 100}%"></i><span>${n}</span></div>`).join("");
   });
@@ -165,6 +210,7 @@ function listen() {
   onValue(ref(db, "passengers"), snap => $("tWaiting").textContent = Object.keys(snap.val() || {}).length);
 
   onValue(ref(db, "drivers"), snap => {
+    renderDrivers(snap.val() || {});
     const all = Object.values(snap.val() || {});
     const road = all.filter(d => d.status === "road").length;
     $("tDrivers").textContent = all.length;
@@ -175,6 +221,55 @@ function listen() {
   onValue(ref(db, "stats/adViews"), snap => { views = snap.val() || {}; renderList(); });
   onValue(ref(db, "stats/adClicks"), snap => { clicks = snap.val() || {}; renderList(); });
 }
+
+// ===== Haqiqiy foydalanish jadvali =====
+let visitors = {}, events = {};
+function renderUsage() {
+  const rows = [...Array(7)].map((_, i) => addDays(-i));          // bugundan orqaga
+  $("usage").innerHTML = `<tr><th>Kun</th><th>👥 Kirgan</th><th>🙋</th><th>🚐</th><th>❌</th><th>⏱</th></tr>` +
+    rows.map(day => {
+      const e = events[day] || {};
+      const wait = e.pickup ? Math.round((e.waitMin || 0) / e.pickup) + " daq" : "–";
+      return `<tr><td>${nice(day)}</td><td>${visitors[day] ?? 0}</td><td>${e.request || 0}</td>` +
+             `<td>${e.pickup || 0}</td><td>${e.cancel || 0}</td><td>${wait}</td></tr>`;
+    }).join("");
+}
+
+// ===== Haydovchilar =====
+function renderDrivers(drivers) {
+  const list = Object.values(drivers).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  $("driverList").innerHTML = list.length
+    ? list.map(d => `<div class="row" style="justify-content:space-between;border-top:1px solid var(--bg);padding-top:6px">
+        <span>${d.status === "road" ? "🚦" : "🅿️"} <b></b> <small style="color:var(--muted)"></small></span>
+        <small>${d.people}/7</small></div>`).join("")
+    : `<small style="color:var(--muted)">Hali hech kim kirmagan. Haydovchi birinchi kirganda ismi va telefoni shu yerda chiqadi.</small>`;
+  // Ism va telefonni textContent bilan qo'yamiz (xavfsiz)
+  $("driverList").querySelectorAll("b").forEach((b, i) => b.textContent = list[i].name);
+  $("driverList").querySelectorAll("span small").forEach((s, i) => s.textContent = list[i].phone);
+}
+
+// Yangi loginlarni ALOHIDA Firebase nusxasida yaratamiz,
+// aks holda har yangi akkaunt yaratilganda admin o'zi tizimdan chiqib ketardi.
+const creatorAuth = getAuth(initializeApp(firebaseConfig, "creator"));
+
+$("addDrivers").onclick = async () => {
+  const lines = $("newDrivers").value.split("\n").map(l => l.trim()).filter(Boolean);
+  const log = text => $("addLog").insertAdjacentHTML("beforeend", `<span>${text}</span>`);
+  $("addLog").innerHTML = "";
+  $("addDrivers").disabled = true;
+  for (const line of lines) {
+    const [login, password] = line.split(/\s+/);
+    if (!login || !password || password.length < 6) { log(`⚠️ «${line}»: login va kamida 6 belgili parol kerak`); continue; }
+    try {
+      await createUserWithEmailAndPassword(creatorAuth, loginToEmail(login), password);
+      log(`✅ ${login} qoʻshildi`);
+    } catch (err) {
+      log(err.code === "auth/email-already-in-use" ? `ℹ️ ${login} allaqachon bor` : `❌ ${login}: ${err.code}`);
+    }
+  }
+  await creatorAuth.signOut();
+  $("addDrivers").disabled = false;
+};
 
 // ===== Reklamalar ro'yxati =====
 const STATUS = {
